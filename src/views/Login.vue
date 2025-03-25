@@ -122,10 +122,7 @@ const handleLogin = () => {
       department: '计算机科学与技术学院'
     }))
     
-    // 显示成功消息
-    alert('登录成功')
-    
-    // 跳转到首页
+    // 登录成功后直接跳转，不显示弹窗
     router.push('/home')
   }
 }
