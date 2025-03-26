@@ -1,5 +1,22 @@
 <template>
   <div class="auth-container">
+    <!-- 添加网格覆盖层 -->
+    <div class="grid-overlay"></div>
+    <div class="grid-overlay-2"></div>
+    
+    <!-- 添加光束效果 -->
+    <div class="light-beam"></div>
+    <div class="light-beam-2"></div>
+    
+    <!-- 浮动粒子 -->
+    <div class="particles">
+      <div class="particle"></div>
+      <div class="particle"></div>
+      <div class="particle"></div>
+      <div class="particle"></div>
+      <div class="particle"></div>
+    </div>
+    
     <div class="auth-card" :class="{ 'slide-out': isSliding }">
       <div class="auth-left">
         <div class="auth-header">
@@ -70,11 +87,27 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const isSliding = ref(false)
+
+// 在组件挂载时检查是否是从注册页面跳转过来的
+onMounted(() => {
+  // 检查本地存储中的标记
+  const transition = localStorage.getItem('auth_transition')
+  if (transition === 'register_to_login') {
+    // 如果是从注册页面跳转过来的，设置为true以显示滑入效果
+    isSliding.value = true
+    // 清除标记
+    localStorage.removeItem('auth_transition')
+    // 添加一个小延迟后将isSliding设置为false，触发动画
+    setTimeout(() => {
+      isSliding.value = false
+    }, 50)
+  }
+})
 
 const loginForm = reactive({
   username: '',
@@ -129,9 +162,11 @@ const handleLogin = () => {
 
 const goToRegister = () => {
   isSliding.value = true
+  // 在本地存储中设置一个标记，表示是从登录页面跳转到注册页面
+  localStorage.setItem('auth_transition', 'login_to_register')
   setTimeout(() => {
     router.push('/register')
-  }, 300)
+  }, 500) // 从300ms增加到500ms，给动画更多时间完成
 }
 </script>
 
@@ -148,25 +183,172 @@ const goToRegister = () => {
   overflow: hidden;
 }
 
-/* 添加动态背景元素 */
-.auth-container::before {
+/* 替换波浪动画效果，使其更加不对称 */
+.auth-container::before,
+.auth-container::after {
   content: '';
   position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 60%);
-  animation: rotate 30s linear infinite;
+  width: 300vw;
+  height: 300vh;
+  top: -100vh;
+  left: -100vw;
+  z-index: 1;
+  background: transparent;
+  opacity: 0.5;
+}
+
+.auth-container::before {
+  background: 
+    linear-gradient(75deg, transparent 0%, rgba(255,255,255,0.12) 45%, transparent 100%);
+  animation: wave1 25s linear infinite;
+  top: -120vh;
+  left: -80vw;
+}
+
+.auth-container::after {
+  background: 
+    linear-gradient(165deg, transparent 0%, rgba(255,255,255,0.08) 55%, transparent 100%);
+  animation: wave2 32s linear infinite;
+  top: -90vh;
+  left: -110vw;
+}
+
+/* 调整网格覆盖层，使其不对称 */
+.auth-container .grid-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(92deg, rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(173deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 53px 47px;
+  background-position: -10px -5px;
+  z-index: 1;
+  opacity: 0.6;
+  animation: pulse 15s ease-in-out infinite;
+}
+
+/* 添加第二个网格层，增加复杂度 */
+.auth-container .grid-overlay-2 {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(103deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(11deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 73px 61px;
+  background-position: 15px 10px;
+  z-index: 1;
+  opacity: 0.5;
+  animation: pulse2 18s ease-in-out infinite;
+}
+
+/* 调整光线效果，使其更加不对称 */
+.auth-container .light-beam {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 150%;
+  height: 150%;
+  background: linear-gradient(37deg, transparent 0%, rgba(255,255,255,0.04) 40%, transparent 100%);
+  transform-origin: 10% 20%;
+  animation: beam 20s ease-in-out infinite alternate;
   z-index: 1;
 }
 
-@keyframes rotate {
-  0% {
-    transform: rotate(0deg);
+/* 添加第二个光束，增加层次感 */
+.auth-container .light-beam-2 {
+  position: absolute;
+  top: -50%;
+  left: -20%;
+  width: 170%;
+  height: 170%;
+  background: linear-gradient(143deg, transparent 0%, rgba(255,255,255,0.03) 60%, transparent 100%);
+  transform-origin: 90% 80%;
+  animation: beam2 25s ease-in-out infinite alternate;
+  z-index: 1;
+}
+
+/* 浮动粒子效果保持不变，但调整透明度 */
+.auth-container .particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.auth-container .particle {
+  position: absolute;
+  display: block;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  animation: float 30s infinite ease-in-out;
+}
+
+.auth-container .particle:nth-child(1) {
+  width: 80px;
+  height: 80px;
+  top: 10%;
+  left: 10%;
+  animation-delay: 0s;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.auth-container .particle:nth-child(2) {
+  width: 60px;
+  height: 60px;
+  top: 70%;
+  left: 80%;
+  animation-delay: 2s;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.auth-container .particle:nth-child(3) {
+  width: 40px;
+  height: 40px;
+  top: 40%;
+  left: 60%;
+  animation-delay: 4s;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.auth-container .particle:nth-child(4) {
+  width: 100px;
+  height: 100px;
+  top: 80%;
+  left: 20%;
+  animation-delay: 6s;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.auth-container .particle:nth-child(5) {
+  width: 50px;
+  height: 50px;
+  top: 30%;
+  left: 90%;
+  animation-delay: 8s;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
   }
-  100% {
-    transform: rotate(360deg);
+  25% {
+    transform: translateY(-40px) translateX(20px);
+  }
+  50% {
+    transform: translateY(10px) translateX(40px);
+  }
+  75% {
+    transform: translateY(30px) translateX(-30px);
   }
 }
 
@@ -177,14 +359,18 @@ const goToRegister = () => {
   min-height: 500px;
   background-color: white;
   border-radius: 12px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
   overflow: hidden;
-  transition: all 0.3s ease;
+  transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
   position: relative;
   z-index: 2;
+  /* 初始状态可能是从左侧滑入 */
+  transform: translateX(0);
+  opacity: 1;
 }
 
-.slide-out {
+/* 滑出动画 */
+.auth-card.slide-out {
   transform: translateX(-100%);
   opacity: 0;
 }
@@ -420,6 +606,85 @@ input {
   
   .title {
     font-size: 20px;
+  }
+}
+
+/* 不对称的动画关键帧 */
+@keyframes wave1 {
+  0% {
+    transform: translate(-45%, -48%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-45%, -48%) rotate(360deg);
+  }
+}
+
+@keyframes wave2 {
+  0% {
+    transform: translate(-52%, -51%) rotate(0deg);
+  }
+  100% {
+    transform: translate(-52%, -51%) rotate(-360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1.02);
+  }
+  42% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  71% {
+    opacity: 0.5;
+    transform: scale(1.01);
+  }
+}
+
+@keyframes pulse2 {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1.01);
+  }
+  37% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  63% {
+    opacity: 0.4;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes beam {
+  0% {
+    transform: rotate(-5deg) translateY(-40%) scale(1.5);
+    opacity: 0.2;
+  }
+  40% {
+    transform: rotate(8deg) translateY(-20%) scale(1.7);
+    opacity: 0.3;
+  }
+  100% {
+    transform: rotate(15deg) translateY(0%) scale(1.6);
+    opacity: 0.4;
+  }
+}
+
+@keyframes beam2 {
+  0% {
+    transform: rotate(10deg) translateY(20%) scale(1.6);
+    opacity: 0.2;
+  }
+  60% {
+    transform: rotate(-3deg) translateY(10%) scale(1.8);
+    opacity: 0.3;
+  }
+  100% {
+    transform: rotate(-12deg) translateY(0%) scale(1.7);
+    opacity: 0.25;
   }
 }
 </style>

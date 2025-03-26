@@ -1,111 +1,145 @@
 <template>
-  <div class="register-container">
-    <div class="register-box">
-      <div class="register-header">
-        <img src="/src/assets/cet-logo.svg" alt="Logo" class="logo-img">
-        <h1 class="title">大学生四六级考试报名系统</h1>
-        <h2 class="subtitle">用户注册</h2>
+  <div class="auth-container">
+    <!-- 添加网格覆盖层 -->
+    <div class="grid-overlay"></div>
+    <div class="grid-overlay-2"></div>
+    
+    <!-- 添加光束效果 -->
+    <div class="light-beam"></div>
+    <div class="light-beam-2"></div>
+    
+    <!-- 浮动粒子 -->
+    <div class="particles">
+      <div class="particle"></div>
+      <div class="particle"></div>
+      <div class="particle"></div>
+      <div class="particle"></div>
+      <div class="particle"></div>
+    </div>
+    
+    <div class="auth-card" :class="{ 'slide-in': isSliding }">
+      <!-- 注册表单内容 -->
+      <div class="auth-left">
+        <div class="auth-header">
+          <img src="/src/assets/cet-logo.svg" alt="Logo" class="logo-img">
+          <h1 class="title">大学生四六级考试报名系统</h1>
+          <h2 class="subtitle">用户注册</h2>
+        </div>
+        
+        <form class="auth-form" @submit.prevent="handleRegister">
+          <div class="form-group">
+            <label for="studentId">学号</label>
+            <input 
+              type="text" 
+              id="studentId" 
+              v-model="registerForm.studentId" 
+              class="form-input"
+              placeholder="请输入学号"
+              required
+              minlength="8"
+              maxlength="20"
+            >
+            <div class="form-error" v-if="errors.studentId">{{ errors.studentId }}</div>
+          </div>
+          
+          <div class="form-group">
+            <label for="name">姓名</label>
+            <input 
+              type="text" 
+              id="name" 
+              v-model="registerForm.name" 
+              class="form-input"
+              placeholder="请输入姓名"
+              required
+            >
+            <div class="form-error" v-if="errors.name">{{ errors.name }}</div>
+          </div>
+          
+          <div class="form-group">
+            <label for="school">学校</label>
+            <input 
+              type="text" 
+              id="school" 
+              v-model="registerForm.school" 
+              class="form-input"
+              placeholder="请输入学校"
+              required
+            >
+            <div class="form-error" v-if="errors.school">{{ errors.school }}</div>
+          </div>
+          
+          <div class="form-group">
+            <label for="department">院系</label>
+            <input 
+              type="text" 
+              id="department" 
+              v-model="registerForm.department" 
+              class="form-input"
+              placeholder="请输入院系"
+              required
+            >
+            <div class="form-error" v-if="errors.department">{{ errors.department }}</div>
+          </div>
+          
+          <div class="form-group">
+            <label for="password">密码</label>
+            <input 
+              type="password" 
+              id="password" 
+              v-model="registerForm.password" 
+              class="form-input"
+              placeholder="请输入密码"
+              required
+              minlength="6"
+              maxlength="20"
+            >
+            <div class="form-error" v-if="errors.password">{{ errors.password }}</div>
+          </div>
+          
+          <div class="form-group">
+            <label for="confirmPassword">确认密码</label>
+            <input 
+              type="password" 
+              id="confirmPassword" 
+              v-model="registerForm.confirmPassword" 
+              class="form-input"
+              placeholder="请再次输入密码"
+              required
+              minlength="6"
+              maxlength="20"
+            >
+            <div class="form-error" v-if="errors.confirmPassword">{{ errors.confirmPassword }}</div>
+          </div>
+          
+          <div class="btn-group">
+            <button type="submit" class="btn btn-primary btn-block">注册</button>
+            <button type="button" class="btn btn-default btn-block" @click="goToLogin">返回登录</button>
+          </div>
+        </form>
       </div>
       
-      <form class="register-form" @submit.prevent="handleRegister">
-        <div class="form-group">
-          <label for="studentId">学号</label>
-          <input 
-            type="text" 
-            id="studentId" 
-            v-model="registerForm.studentId" 
-            class="form-input"
-            placeholder="请输入学号"
-            required
-            minlength="8"
-            maxlength="20"
-          >
-          <div class="form-error" v-if="errors.studentId">{{ errors.studentId }}</div>
+      <div class="auth-right">
+        <div class="info-content">
+          <h2>加入我们</h2>
+          <p>注册账号，开始您的四六级考试之旅</p>
+          <ul>
+            <li>便捷的报名流程</li>
+            <li>实时的考试信息</li>
+            <li>安全的支付系统</li>
+            <li>快速的成绩查询</li>
+          </ul>
         </div>
-        
-        <div class="form-group">
-          <label for="name">姓名</label>
-          <input 
-            type="text" 
-            id="name" 
-            v-model="registerForm.name" 
-            class="form-input"
-            placeholder="请输入姓名"
-            required
-          >
-          <div class="form-error" v-if="errors.name">{{ errors.name }}</div>
-        </div>
-        
-        <div class="form-group">
-          <label for="school">学校</label>
-          <input 
-            type="text" 
-            id="school" 
-            v-model="registerForm.school" 
-            class="form-input"
-            placeholder="请输入学校"
-            required
-          >
-          <div class="form-error" v-if="errors.school">{{ errors.school }}</div>
-        </div>
-        
-        <div class="form-group">
-          <label for="department">院系</label>
-          <input 
-            type="text" 
-            id="department" 
-            v-model="registerForm.department" 
-            class="form-input"
-            placeholder="请输入院系"
-            required
-          >
-          <div class="form-error" v-if="errors.department">{{ errors.department }}</div>
-        </div>
-        
-        <div class="form-group">
-          <label for="password">密码</label>
-          <input 
-            type="password" 
-            id="password" 
-            v-model="registerForm.password" 
-            class="form-input"
-            placeholder="请输入密码"
-            required
-            minlength="6"
-            maxlength="20"
-          >
-          <div class="form-error" v-if="errors.password">{{ errors.password }}</div>
-        </div>
-        
-        <div class="form-group">
-          <label for="confirmPassword">确认密码</label>
-          <input 
-            type="password" 
-            id="confirmPassword" 
-            v-model="registerForm.confirmPassword" 
-            class="form-input"
-            placeholder="请再次输入密码"
-            required
-            minlength="6"
-            maxlength="20"
-          >
-          <div class="form-error" v-if="errors.confirmPassword">{{ errors.confirmPassword }}</div>
-        </div>
-        
-        <div class="btn-group">
-          <button type="submit" class="btn btn-primary btn-block">注册</button>
-          <button type="button" class="btn btn-default btn-block" @click="goToLogin">返回登录</button>
-        </div>
-      </form>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
+const isSliding = ref(true) // 默认为true，表示初始状态是从右侧滑入
 
 const registerForm = reactive({
   studentId: '',
@@ -123,6 +157,25 @@ const errors = reactive({
   department: '',
   password: '',
   confirmPassword: ''
+})
+
+// 在组件挂载时检查是否是从登录页面跳转过来的
+onMounted(() => {
+  // 检查本地存储中的标记
+  const transition = localStorage.getItem('auth_transition')
+  if (transition === 'login_to_register') {
+    // 如果是从登录页面跳转过来的，设置为true以显示滑入效果
+    isSliding.value = true
+    // 清除标记
+    localStorage.removeItem('auth_transition')
+    // 添加一个小延迟后将isSliding设置为false，触发动画
+    setTimeout(() => {
+      isSliding.value = false
+    }, 50)
+  } else {
+    // 如果不是从登录页面跳转过来的，直接显示注册页面
+    isSliding.value = false
+  }
 })
 
 const validateForm = () => {
@@ -191,13 +244,18 @@ const handleRegister = () => {
 }
 
 const goToLogin = () => {
-  router.push('/login')
+  isSliding.value = true
+  // 在本地存储中设置一个标记，表示是从注册页面跳转到登录页面
+  localStorage.setItem('auth_transition', 'register_to_login')
+  setTimeout(() => {
+    router.push('/login')
+  }, 500) // 从300ms增加到500ms，给动画更多时间完成
 }
 </script>
 
 <style scoped>
 /* 注册页面样式 */
-.register-container {
+.auth-container {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -209,7 +267,7 @@ const goToLogin = () => {
 }
 
 /* 添加动态背景元素 */
-.register-container::before {
+.auth-container::before {
   content: '';
   position: absolute;
   top: -50%;
@@ -230,18 +288,42 @@ const goToLogin = () => {
   }
 }
 
-.register-box {
-  width: 100%;
-  max-width: 550px;
+/* 调整注册卡片宽度 */
+.auth-card {
+  display: block;
+  width: 650px;
+  max-width: 90%;
   background-color: white;
   border-radius: 12px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
-  padding: 40px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1); /* 从0.3s改为0.5s，使用更平滑的贝塞尔曲线 */
   position: relative;
   z-index: 2;
+  padding: 40px;
+  /* 初始状态设置为从右侧开始 */
+  transform: translateX(100%);
+  opacity: 0;
 }
 
-.register-header {
+/* 滑入动画 */
+.auth-card.slide-in {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+/* 正常显示状态 */
+.auth-card:not(.slide-in) {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* 移除不需要的左侧容器样式 */
+.auth-left {
+  padding: 0; /* 移除内边距 */
+}
+
+.auth-header {
   text-align: center;
   margin-bottom: 30px;
 }
@@ -267,7 +349,7 @@ const goToLogin = () => {
   font-weight: 400;
 }
 
-.register-form {
+.auth-form {
   margin-bottom: 20px;
 }
 
@@ -362,9 +444,15 @@ label {
   width: 100%;
 }
 
+/* 移除右侧信息区域 */
+.auth-right {
+  display: none;
+}
+
 /* 响应式设计 */
 @media (max-width: 576px) {
-  .register-box {
+  .auth-card {
+    flex-direction: column;
     padding: 20px;
   }
   
