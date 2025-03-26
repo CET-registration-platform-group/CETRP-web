@@ -138,19 +138,13 @@ export default {
 }
 
 /* 响应式布局调整 */
-@media (max-width: 1400px) {
+@media (max-width: 1200px) {
   .functions-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+      grid-template-columns: repeat(2, 1fr);
+    }
 }
 
-@media (max-width: 992px) {
-  .functions-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
+@media (max-width: 600px) {
   .functions-grid {
     grid-template-columns: 1fr;
   }
