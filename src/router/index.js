@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import Auth from '../views/Auth.vue'
+import Home from '../views/Home.vue'
 
 const routes = [
   {
@@ -7,18 +9,16 @@ const routes = [
   },
   {
     path: '/login',
-    name: 'Login',
-    component: () => import('../views/Login.vue')
+    component: Auth
   },
   {
     path: '/register',
-    name: 'Register',
-    component: () => import('../views/Register.vue')
+    component: Auth
   },
   {
     path: '/home',
-    name: 'Home',
-    component: () => import('../views/Home.vue')
+    component: Home,
+    meta: { requiresAuth: true }
   },
   {
     path: '/registration',
@@ -83,9 +83,10 @@ const router = createRouter({
 
 // 路由守卫
 router.beforeEach((to, from, next) => {
-  // 如果访问的不是登录或注册页面，且没有登录，则重定向到登录页面
-  const isAuthenticated = localStorage.getItem('user')
-  if (to.path !== '/login' && to.path !== '/register' && !isAuthenticated) {
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const user = localStorage.getItem('user')
+  
+  if (requiresAuth && !user) {
     next('/login')
   } else {
     next()
