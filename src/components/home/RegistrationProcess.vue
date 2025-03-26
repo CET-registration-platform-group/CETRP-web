@@ -96,17 +96,19 @@ export default {
   text-decoration: none;
   color: var(--text-primary);
   display: block;
-  width: 100%;
+  width: 100%; /* 控制宽度 */
+  max-width: 100px; /* 调整为100px，使阴影效果更紧凑 */
+  margin: 0 auto; /* 居中显示 */
   padding: 10px;
   border-radius: 12px;
   transition: all 0.3s ease;
 }
 
-/* 进一步减小阴影范围 */
-.step-link:hover {
+/* 使用更具体的选择器，增强阴影效果 */
+.process-steps .process-step .step-link:hover {
   transform: translateY(-5px);
-  box-shadow: 0 6px 12px rgba(24, 103, 192, 0.12);
-  background-color: rgba(24, 103, 192, 0.05);
+  box-shadow: 0 5px 10px rgba(24, 103, 192, 0.25); /* 增加阴影不透明度 */
+  background-color: rgba(24, 103, 192, 0.05); /* 稍微增加背景色不透明度 */
 }
 
 .step-icon {
@@ -124,10 +126,10 @@ export default {
   box-shadow: 0 5px 10px rgba(24, 103, 192, 0.1);
 }
 
-/* 进一步减小图标阴影 */
-.step-link:hover .step-icon {
+/* 使用更具体的选择器，增强图标阴影 */
+.process-steps .process-step .step-link:hover .step-icon {
   transform: scale(1.1);
-  box-shadow: 0 6px 10px rgba(24, 103, 192, 0.12);
+  box-shadow: 0 5px 8px rgba(24, 103, 192, 0.2); /* 增加图标阴影不透明度 */
 }
 
 .step-icon.step-completed {
@@ -187,6 +189,10 @@ export default {
     min-width: 100px;
   }
   
+  .step-link {
+    max-width: 90px; /* 移动端调整最大宽度更小 */
+  }
+  
   .step-name {
     font-size: 12px;
   }
@@ -201,10 +207,10 @@ export default {
     font-size: 20px;
   }
   
-  /* 调整移动端悬停效果 */
-  .step-link:hover {
+  /* 调整移动端悬停效果，增强阴影 */
+  .process-steps .process-step .step-link:hover {
     transform: translateY(-3px);
-    box-shadow: 0 4px 8px rgba(24, 103, 192, 0.12);
+    box-shadow: 0 3px 6px rgba(24, 103, 192, 0.25); /* 增加阴影不透明度 */
   }
 }
 </style> 
