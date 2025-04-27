@@ -26,8 +26,11 @@
   --bg-color: #f5f7fa;
   --bg-light: #f9fafc;
   --card-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  --card-shadow-deep: 0 20px 50px rgba(0, 0, 0, 0.2);
+  --card-shadow-deep: 0 20px 50px rgba(0, 0, 0, 0.3);
   --card-shadow-hover: 0 6px 15px rgba(24, 103, 192, 0.25);
+  
+  /* 新增：登录卡片阴影，增强对比度 */
+  --login-card-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   
   /* 交互状态 */
   --hover-bg: #f5f7fa;

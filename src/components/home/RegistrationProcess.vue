@@ -11,13 +11,20 @@
           <template v-for="(step, index) in steps" :key="index">
             <div class="process-step">
               <router-link :to="step.link" class="step-link">
-                <div class="step-icon" :class="step.iconClass">
-                  <el-icon><component :is="step.elIcon" /></el-icon>
-                </div>
-                <div class="step-name">{{ step.name }}</div>
-                <div class="step-status"
-                  :class="{ 'status-completed': step.status === '已完成', 'status-pending': step.status === '未开始' }">
-                  {{ step.status }}
+                <div class="step-content">
+                  <div class="step-icon"
+                    :class="{
+                      'step-completed': step.status === 'completed' || step.status === '已完成',
+                      'step-pending': step.status !== 'completed' && step.status !== '已完成'
+                    }">
+                    <el-icon><component :is="step.elIcon" /></el-icon>
+                  </div>
+                  <div class="step-name">{{ step.name }}</div>
+                  <div class="step-status"
+                    :class="{ 'status-completed': step.status === '已完成', 'status-pending': step.status === '未开始' }">
+                    {{ step.status === 'pending' ? '未开始' : (step.status === 'completed' ? '已完成' : step.status) }}
+                  </div>
+                  <div v-if="step.optional" class="step-optional">可选</div>
                 </div>
               </router-link>
             </div>
@@ -68,19 +75,22 @@ export default {
 .process-steps {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding: 20px 0;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  overflow-x: visible;
+  padding: 10px 0;
 }
 
 .process-step {
   text-align: center;
   position: relative;
-  flex: 1;
-  min-width: 120px;
+  flex: 0 0 90px;
+  min-width: 90px;
+  max-width: 100px;
   display: flex;
   align-items: center;
+  margin: 0 2px;
 }
 
 /* 确保连接器样式一致 */
@@ -88,71 +98,87 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 30px; /* 固定宽度 */
-  flex-shrink: 0; /* 防止压缩 */
+  width: 16px;
+  flex-shrink: 0;
 }
 
 .step-link {
   text-decoration: none;
   color: var(--text-primary);
-  display: block;
-  width: 100%; /* 控制宽度 */
-  max-width: 100px; /* 调整为100px，使阴影效果更紧凑 */
-  margin: 0 auto; /* 居中显示 */
-  padding: 10px;
-  border-radius: 12px;
-  transition: all 0.3s ease;
-}
-
-/* 使用更具体的选择器，增强阴影效果 */
-.process-steps .process-step .step-link:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 5px 10px rgba(24, 103, 192, 0.25); /* 增加阴影不透明度 */
-  background-color: rgba(24, 103, 192, 0.05); /* 稍微增加背景色不透明度 */
-}
-
-.step-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background-color: var(--primary-bg);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 10px;
-  transition: var(--transition-normal);
-  color: var(--primary-color);
-  font-size: 24px;
-  box-shadow: 0 5px 10px rgba(24, 103, 192, 0.1);
+  width: 100%;
+  max-width: 90px;
+  margin: 0 auto;
+  padding: 6px;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  height: 145px;
+  box-sizing: border-box;
+  border: 1.5px solid #e0e6ed;
+  background: #fff;
+  box-shadow: 0 4px 16px rgba(24, 103, 192, 0.08);
 }
 
-/* 使用更具体的选择器，增强图标阴影 */
-.process-steps .process-step .step-link:hover .step-icon {
-  transform: scale(1.1);
-  box-shadow: 0 5px 8px rgba(24, 103, 192, 0.2); /* 增加图标阴影不透明度 */
+.process-steps .process-step .step-link:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 18px rgba(24, 103, 192, 0.18);
+  background-color: rgba(24, 103, 192, 0.07);
+  /* 边框颜色不变 */
+}
+
+.step-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
+
+.step-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background-color: var(--bg-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 6px;
+  transition: var(--transition-normal);
+  color: #b0b0b0;
+  font-size: 18px;
+  box-shadow: 0 2px 6px rgba(24, 103, 192, 0.08);
+  border: 1.5px solid #b3c6e0;
 }
 
 .step-icon.step-completed {
   background-color: var(--primary-color);
-  color: white;
+  color: #fff;
+  border-color: var(--primary-color);
 }
 
 .step-icon.step-pending {
   background-color: var(--bg-light);
-  color: var(--text-tertiary);
+  color: #b0b0b0;
+  border-color: #e0e6ed;
 }
 
 .step-name {
   font-weight: 600;
-  margin-bottom: 5px;
-  font-size: 14px;
+  margin-bottom: 2px;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .step-status {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-tertiary);
   background-color: transparent;
   padding: 0;
+  margin-top: 2px;
+  letter-spacing: 1px;
 }
 
 .status-completed {
@@ -160,12 +186,14 @@ export default {
 }
 
 .status-pending {
-  color: var(--text-tertiary);
+  color: #b0b0b0;
 }
 
 .connector-arrow {
-  font-size: 20px;
-  color: var(--border-color);
+  font-size: 22px;
+  color: #b3c6e0;
+  font-weight: bold;
+  filter: drop-shadow(0 1px 2px rgba(24,103,192,0.10));
   transition: var(--transition-fast);
 }
 
@@ -178,23 +206,33 @@ export default {
   opacity: 0.8; /* 稍微降低未完成连接器的不透明度 */
 }
 
+.step-optional {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--warning-color, #faad14);
+  letter-spacing: 1px;
+}
+
 @media (max-width: 992px) {
   .process-steps {
-    justify-content: flex-start;
-    padding-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-bottom: 8px;
   }
   
   .process-step {
-    flex: 0 0 auto;
-    min-width: 100px;
+    flex: 0 0 80px;
+    min-width: 80px;
+    max-width: 90px;
   }
   
   .step-link {
-    max-width: 90px; /* 移动端调整最大宽度更小 */
+    max-width: 80px;
+    height: 130px;
   }
   
   .step-name {
-    font-size: 12px;
+    font-size: 11px;
   }
   
   .step-status {

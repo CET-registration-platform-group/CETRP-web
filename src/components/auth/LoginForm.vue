@@ -70,6 +70,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 const emit = defineEmits(['switch-to-register'])
 const router = useRouter()
@@ -129,8 +130,18 @@ const handleLogin = () => {
       department: '计算机科学与技术学院'
     }))
     
-    // 登录成功后直接跳转，不显示弹窗
-    router.push('/home')
+    // 显示登录成功的消息通知
+    ElMessage({
+      message: '登录成功',
+      type: 'success',
+      duration: 3000,
+      showClose: true
+    })
+    
+    // 登录成功后跳转
+    setTimeout(() => {
+      router.push('/home')
+    }, 500) // 短暂延迟，让用户看到成功消息
   }
 }
 

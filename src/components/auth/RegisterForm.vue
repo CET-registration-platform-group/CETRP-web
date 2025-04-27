@@ -148,6 +148,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 const emit = defineEmits(['switch-to-login'])
 const router = useRouter()
@@ -266,9 +267,18 @@ const validateForm = () => {
 const handleRegister = () => {
   if (validateForm()) {
     // 这里应该是实际的注册API调用
-    // 模拟注册成功
-    alert('注册成功！请登录')
-    goToLogin()
+    // 显示注册成功的消息通知
+    ElMessage({
+      message: '注册成功！请登录您的账号',
+      type: 'success',
+      duration: 3000,
+      showClose: true
+    })
+    
+    // 注册成功后跳转到登录页面
+    setTimeout(() => {
+      goToLogin()
+    }, 1000) // 延迟1秒，让用户看到成功消息
   }
 }
 

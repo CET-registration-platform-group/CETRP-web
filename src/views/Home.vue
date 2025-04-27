@@ -59,53 +59,60 @@ export default {
       },
       registrationSteps: [
         {
-          name: '预备报名',
-          status: '已完成',
-          link: '/registration/prepare',
+          name: '报名协议',
           elIcon: 'Document',
-          iconClass: 'step-completed'
+          iconClass: '',
+          status: 'completed'
         },
         {
-          name: '信息填写',
-          status: '已完成',
-          link: '/registration/info',
-          elIcon: 'Edit',
-          iconClass: 'step-completed'
+          name: '资格信息查询',
+          elIcon: 'Search',
+          iconClass: '',
+          status: 'completed'
         },
         {
-          name: '信息确认',
-          status: '已完成',
-          link: '/registration/confirm',
+          name: '资格信息确认',
           elIcon: 'Check',
-          iconClass: 'step-completed'
+          iconClass: '',
+          status: 'pending'
         },
         {
-          name: '考试报名',
-          status: '已完成',
-          link: '/registration/exam',
-          elIcon: 'List',
-          iconClass: 'step-completed'
+          name: '笔试报考',
+          elIcon: 'Edit',
+          iconClass: '',
+          status: 'pending'
         },
         {
-          name: '缴费确认',
-          status: '已完成',
-          link: '/registration/payment',
+          name: '笔试缴费',
           elIcon: 'CreditCard',
-          iconClass: 'step-completed'
+          iconClass: '',
+          status: 'pending'
         },
         {
-          name: '准考证打印',
-          status: '未开始',
-          link: '/registration/admission',
-          elIcon: 'Printer',
-          iconClass: 'step-pending'
-        },
-        {
-          name: '参加考试',
-          status: '未开始',
-          link: '/registration/take-exam',
+          name: '口试报考',
           elIcon: 'Reading',
-          iconClass: 'step-pending'
+          iconClass: '',
+          status: 'pending',
+          optional: true
+        },
+        {
+          name: '口试缴费',
+          elIcon: 'CreditCard',
+          iconClass: '',
+          status: 'pending',
+          optional: true
+        },
+        {
+          name: '完成报名',
+          elIcon: 'Check',
+          iconClass: '',
+          status: 'pending'
+        },
+        {
+          name: '打印准考证',
+          elIcon: 'Printer',
+          iconClass: '',
+          status: 'pending'
         }
       ],
       quickFunctions: [
