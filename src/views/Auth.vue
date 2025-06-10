@@ -19,6 +19,7 @@
         :is="currentComponent" 
         @switch-to-login="switchToLogin" 
         @switch-to-register="switchToRegister"
+        @switch-to-reset="switchToReset"
         :key="route.path"
       />
     </div>
@@ -30,12 +31,14 @@ import { ref, shallowRef, onMounted, markRaw, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import LoginForm from '../components/auth/LoginForm.vue'
 import RegisterForm from '../components/auth/RegisterForm.vue'
+import ResetPasswordForm from '../components/auth/ResetPasswordForm.vue'
 
 const route = useRoute()
 // 使用markRaw包装组件，避免不必要的响应式处理
 const LoginFormComponent = markRaw(LoginForm)
 const RegisterFormComponent = markRaw(RegisterForm)
-const currentComponent = shallowRef(null)
+const ResetPasswordFormComponent = markRaw(ResetPasswordForm)
+const currentComponent = shallowRef(LoginFormComponent) // 设置默认组件为登录组件
 
 // 根据路由路径决定显示哪个组件
 onMounted(() => {
@@ -53,6 +56,8 @@ const updateComponent = () => {
     currentComponent.value = LoginFormComponent
   } else if (path === '/register') {
     currentComponent.value = RegisterFormComponent
+  } else if (path === '/reset-password') {
+    currentComponent.value = ResetPasswordFormComponent
   }
 }
 
@@ -66,6 +71,12 @@ const switchToLogin = () => {
 const switchToRegister = () => {
   window.history.pushState(null, '', '/register')
   currentComponent.value = RegisterFormComponent
+}
+
+// 切换到重置密码组件
+const switchToReset = () => {
+  window.history.pushState(null, '', '/reset-password')
+  currentComponent.value = ResetPasswordFormComponent
 }
 </script>
 

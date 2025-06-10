@@ -8,20 +8,20 @@
       
       <form class="auth-form" @submit.prevent="handleLogin">
         <div class="form-group">
-          <label for="username">学号</label>
+          <label for="identityDocumentNumber">证件号码</label>
           <div class="input-wrapper">
             <i class="icon-user"></i>
             <input 
               type="text" 
-              id="username" 
-              v-model="loginForm.username" 
-              placeholder="请输入学号"
+              id="identityDocumentNumber" 
+              v-model="loginForm.identityDocumentNumber" 
+              placeholder="请输入证件号码"
               required
               minlength="8"
               maxlength="20"
             >
           </div>
-          <div class="error-message" v-if="errors.username">{{ errors.username }}</div>
+          <div class="error-message" v-if="errors.identityDocumentNumber">{{ errors.identityDocumentNumber }}</div>
         </div>
         
         <div class="form-group">
@@ -42,12 +42,17 @@
         </div>
         
         <div class="form-group">
-          <button type="submit" class="auth-btn">登录</button>
+          <button type="submit" class="auth-btn" :disabled="loading">
+            <span v-if="loading" class="loading-spinner"></span>
+            {{ loading ? '登录中...' : '登录' }}
+          </button>
         </div>
         
         <div class="auth-link">
           <span>还没有账号？</span>
           <a href="javascript:void(0)" @click="goToRegister">立即注册</a>
+          <span class="divider">|</span>
+          <a href="javascript:void(0)" @click="goToReset">忘记密码？</a>
         </div>
       </form>
     </div>
@@ -72,10 +77,11 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
-const emit = defineEmits(['switch-to-register'])
+const emit = defineEmits(['switch-to-register', 'switch-to-reset'])
 const router = useRouter()
 const isSliding = ref(false)
 const isSlideIn = ref(true)
+const loading = ref(false)
 
 onMounted(() => {
   // 初始显示时的入场动画
@@ -85,25 +91,25 @@ onMounted(() => {
 })
 
 const loginForm = reactive({
-  username: '',
+  identityDocumentNumber: '',
   password: ''
 })
 
 const errors = reactive({
-  username: '',
+  identityDocumentNumber: '',
   password: ''
 })
 
 const validateForm = () => {
   let isValid = true
-  errors.username = ''
+  errors.identityDocumentNumber = ''
   errors.password = ''
   
-  if (!loginForm.username) {
-    errors.username = '请输入学号'
+  if (!loginForm.identityDocumentNumber) {
+    errors.identityDocumentNumber = '请输入证件号码'
     isValid = false
-  } else if (loginForm.username.length < 8 || loginForm.username.length > 20) {
-    errors.username = '学号长度应在8-20个字符之间'
+  } else if (loginForm.identityDocumentNumber.length < 8 || loginForm.identityDocumentNumber.length > 20) {
+    errors.identityDocumentNumber = '证件号码长度应在8-20个字符之间'
     isValid = false
   }
   
@@ -118,30 +124,107 @@ const validateForm = () => {
   return isValid
 }
 
-const handleLogin = () => {
+const handleLogin = async () => {
   if (validateForm()) {
-    // 这里应该是实际的登录API调用
-    // 模拟登录成功
-    localStorage.setItem('user', JSON.stringify({
-      username: loginForm.username,
-      name: '测试用户',
-      studentId: loginForm.username,
-      school: '示例大学',
-      department: '计算机科学与技术学院'
-    }))
-    
-    // 显示登录成功的消息通知
-    ElMessage({
-      message: '登录成功',
-      type: 'success',
-      duration: 3000,
-      showClose: true
-    })
-    
-    // 登录成功后跳转
-    setTimeout(() => {
-      router.push('/home')
-    }, 500) // 短暂延迟，让用户看到成功消息
+    try {
+      loading.value = true
+      
+      // 根据API文档，使用POST请求，参数通过query传递
+      const params = new URLSearchParams()
+      
+      // 只添加非空的参数
+      if (loginForm.identityDocumentNumber && loginForm.identityDocumentNumber.trim()) {
+        params.append('identityDocumentNumber', loginForm.identityDocumentNumber.trim())
+      }
+      
+      if (loginForm.password && loginForm.password.trim()) {
+        params.append('password', loginForm.password.trim())
+      }
+      
+      // 调试信息
+      console.log('发送的参数:', {
+        identityDocumentNumber: loginForm.identityDocumentNumber,
+        password: loginForm.password ? '***' : 'empty'
+      })
+      console.log('构建的URL参数:', params.toString())
+      
+      const response = await fetch(`http://localhost:8080/api/student/login?${params}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const data = await response.json()
+
+      if (data.code === 200) {
+        // 登录成功，保存用户信息和token
+        const { token, user } = data.data
+        
+        // 调试信息
+        console.log('登录成功，用户信息:', user)
+        console.log('Token:', token)
+        
+        localStorage.setItem('token', token)
+        localStorage.setItem('user', JSON.stringify(user))
+        
+        ElMessage({
+          message: data.message || '登录成功',
+          type: 'success',
+          duration: 3000,
+          showClose: true
+        })
+        
+        // 登录成功后跳转
+        setTimeout(() => {
+          router.push('/home')
+        }, 500)
+      } else {
+        ElMessage({
+          message: data.message || '登录失败',
+          type: 'error',
+          duration: 3000,
+          showClose: true
+        })
+      }
+    } catch (error) {
+      console.error('登录失败:', error)
+      let errorMessage = '登录失败，请稍后重试'
+      
+      if (error.response) {
+        // 处理HTTP错误响应
+        switch (error.response.status) {
+          case 400:
+            errorMessage = '证件号码或密码错误'
+            break
+          case 401:
+            errorMessage = '未授权访问'
+            break
+          case 403:
+            errorMessage = '访问被禁止'
+            break
+          case 404:
+            errorMessage = '接口不存在'
+            break
+          case 500:
+            errorMessage = '服务器内部错误'
+            break
+          default:
+            errorMessage = error.response.data?.message || '登录失败'
+        }
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
+      ElMessage({
+        message: errorMessage,
+        type: 'error',
+        duration: 3000,
+        showClose: true
+      })
+    } finally {
+      loading.value = false
+    }
   }
 }
 
@@ -149,6 +232,13 @@ const goToRegister = () => {
   isSliding.value = true
   setTimeout(() => {
     emit('switch-to-register')
+  }, 400)
+}
+
+const goToReset = () => {
+  isSliding.value = true
+  setTimeout(() => {
+    emit('switch-to-reset')
   }, 400)
 }
 </script>
@@ -316,6 +406,35 @@ input {
   box-shadow: 0 2px 5px rgba(24, 103, 192, 0.15);
 }
 
+.auth-btn:disabled {
+  background-color: #c0c4cc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.auth-btn:disabled:hover {
+  background-color: #c0c4cc;
+  transform: none;
+  box-shadow: none;
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 .auth-link {
   text-align: center;
   font-size: 14px;
@@ -334,6 +453,11 @@ input {
 .auth-link a:hover {
   color: #5d99eb;
   text-decoration: underline;
+}
+
+.auth-link .divider {
+  margin: 0 10px;
+  color: #909399;
 }
 
 .info-content {

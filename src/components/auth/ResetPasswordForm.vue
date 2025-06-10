@@ -4,22 +4,21 @@
       <div class="auth-header">
         <img src="/src/assets/cet-logo.svg" alt="Logo" class="logo-img">
         <h1 class="title">大学生四六级考试报名系统</h1>
-        <h2 class="subtitle">用户注册</h2>
+        <h2 class="subtitle">重置密码</h2>
       </div>
       
-      <form class="auth-form" @submit.prevent="handleRegister">
-        <!-- 基本信息 -->
+      <form class="auth-form" @submit.prevent="handleResetPassword">
         <div class="form-section">
-          <h3 class="section-title">账号信息</h3>
+          <h3 class="section-title">重置密码</h3>
           
           <div class="form-group">
             <label for="email">电子邮箱 <span class="required">*</span></label>
             <input 
               type="email" 
               id="email" 
-              v-model="registerForm.email" 
+              v-model="resetForm.email" 
               class="form-input"
-              placeholder="请输入电子邮箱"
+              placeholder="请输入注册时使用的电子邮箱"
               required
             >
             <div class="form-error" v-if="errors.email">{{ errors.email }}</div>
@@ -31,7 +30,7 @@
               <input 
                 type="text" 
                 id="verificationCode" 
-                v-model="registerForm.verificationCode" 
+                v-model="resetForm.verificationCode" 
                 class="form-input verification-code-input"
                 placeholder="请输入验证码"
                 required
@@ -40,41 +39,28 @@
                 type="button" 
                 class="btn btn-default send-code-btn"
                 @click="sendVerificationCode"
+                :disabled="loading"
               >
-                发送验证码
+                {{ loading ? '发送中...' : '发送验证码' }}
               </button>
             </div>
             <div class="form-error" v-if="errors.verificationCode">{{ errors.verificationCode }}</div>
           </div>
           
           <div class="form-group">
-            <label for="phone">手机号 <span class="required">*</span></label>
-            <input 
-              type="tel" 
-              id="phone" 
-              v-model="registerForm.phone" 
-              class="form-input"
-              placeholder="请输入手机号"
-              required
-            >
-            <div class="form-hint">邮箱和手机号用于重置密码，请务必填写正确</div>
-            <div class="form-error" v-if="errors.phone">{{ errors.phone }}</div>
-          </div>
-          
-          <div class="form-group">
-            <label for="password">密码 <span class="required">*</span></label>
+            <label for="newPassword">新密码 <span class="required">*</span></label>
             <input 
               type="password" 
-              id="password" 
-              v-model="registerForm.password" 
+              id="newPassword" 
+              v-model="resetForm.newPassword" 
               class="form-input"
-              placeholder="请输入密码"
+              placeholder="请输入新密码"
               required
               minlength="6"
               maxlength="20"
             >
             <div class="form-hint">密码长度应在6-20个字符之间，且必须包含大小写字母和数字</div>
-            <div class="form-error" v-if="errors.password">{{ errors.password }}</div>
+            <div class="form-error" v-if="errors.newPassword">{{ errors.newPassword }}</div>
           </div>
           
           <div class="form-group">
@@ -82,70 +68,33 @@
             <input 
               type="password" 
               id="confirmPassword" 
-              v-model="registerForm.confirmPassword" 
+              v-model="resetForm.confirmPassword" 
               class="form-input"
-              placeholder="请再次输入密码"
+              placeholder="请再次输入新密码"
               required
               minlength="6"
               maxlength="20"
             >
-            <div class="form-hint">密码长度应在6-20个字符之间，且必须包含大小写字母和数字</div>
+            <div class="form-hint">请再次输入新密码以确认</div>
             <div class="form-error" v-if="errors.confirmPassword">{{ errors.confirmPassword }}</div>
           </div>
         </div>
         
-        <!-- 个人信息 -->
-        <div class="form-section">
-          <h3 class="section-title">个人信息</h3>
-          
-          <div class="form-group">
-            <label for="idType">证件类型 <span class="required">*</span></label>
-            <select 
-              id="idType" 
-              v-model="registerForm.idType" 
-              class="form-input"
-              required
-            >
-              <option value="" disabled selected>--请选择证件类型--</option>
-              <option value="身份证">身份证</option>
-              <option value="护照">护照</option>
-              <option value="港澳通行证">港澳通行证</option>
-              <option value="台湾通行证">台湾通行证</option>
-              <option value="其他">其他</option>
-            </select>
-            <div class="form-error" v-if="errors.idType">{{ errors.idType }}</div>
-          </div>
-          
-          <div class="form-group">
-            <label for="idNumber">证件号码 <span class="required">*</span></label>
-            <input 
-              type="text" 
-              id="idNumber" 
-              v-model="registerForm.idNumber" 
-              class="form-input"
-              placeholder="请输入证件号码"
-              required
-            >
-            <div class="form-error" v-if="errors.idNumber">{{ errors.idNumber }}</div>
-          </div>
-          
-          <div class="form-group">
-            <label for="name">姓名 <span class="required">*</span></label>
-            <input 
-              type="text" 
-              id="name" 
-              v-model="registerForm.name" 
-              class="form-input"
-              placeholder="请输入姓名"
-              required
-            >
-            <div class="form-error" v-if="errors.name">{{ errors.name }}</div>
-          </div>
-        </div>
-        
         <div class="btn-group">
-          <button type="submit" class="btn btn-primary btn-block" :disabled="loading">注册</button>
-          <button type="button" class="btn btn-default btn-block" @click="goToLogin">返回登录</button>
+          <button 
+            type="submit" 
+            class="btn btn-primary btn-block" 
+            :disabled="loading"
+          >
+            重置密码
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-default btn-block" 
+            @click="goToLogin"
+          >
+            返回登录
+          </button>
         </div>
       </form>
     </div>
@@ -174,102 +123,64 @@ onMounted(() => {
   }, 50)
 })
 
-const registerForm = reactive({
+const resetForm = reactive({
   email: '',
-  phone: '',
-  password: '',
-  confirmPassword: '',
-  idType: '',
-  idNumber: '',
-  name: '',
-  verificationCode: ''
+  verificationCode: '',
+  newPassword: '',
+  confirmPassword: ''
 })
 
 const errors = reactive({
   email: '',
-  phone: '',
-  password: '',
-  confirmPassword: '',
-  idType: '',
-  idNumber: '',
-  name: '',
-  verificationCode: ''
+  verificationCode: '',
+  newPassword: '',
+  confirmPassword: ''
 })
 
 const validateForm = () => {
   let isValid = true
   
-  // 重置所有错误信息
+  // 重置错误信息
   Object.keys(errors).forEach(key => {
     errors[key] = ''
   })
   
   // 验证邮箱
-  if (!registerForm.email) {
+  if (!resetForm.email) {
     errors.email = '请输入电子邮箱'
     isValid = false
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(registerForm.email)) {
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(resetForm.email)) {
     errors.email = '请输入有效的电子邮箱'
     isValid = false
   }
   
   // 验证验证码
-  if (!registerForm.verificationCode) {
+  if (!resetForm.verificationCode) {
     errors.verificationCode = '请输入验证码'
     isValid = false
-  } else if (!/^\d{6}$/.test(registerForm.verificationCode)) {
+  } else if (!/^\d{6}$/.test(resetForm.verificationCode)) {
     errors.verificationCode = '验证码必须是6位数字'
     isValid = false
   }
   
-  // 验证手机号
-  if (!registerForm.phone) {
-    errors.phone = '请输入手机号'
+  // 验证新密码
+  if (!resetForm.newPassword) {
+    errors.newPassword = '请输入新密码'
     isValid = false
-  } else if (!/^1[3-9]\d{9}$/.test(registerForm.phone)) {
-    errors.phone = '请输入有效的手机号'
+  } else if (resetForm.newPassword.length < 6 || resetForm.newPassword.length > 20) {
+    errors.newPassword = '密码长度应在6-20个字符之间'
     isValid = false
-  }
-  
-  // 验证密码
-  if (!registerForm.password) {
-    errors.password = '请输入密码'
-    isValid = false
-  } else if (registerForm.password.length < 6 || registerForm.password.length > 20) {
-    errors.password = '密码长度应在6-20个字符之间'
-    isValid = false
-  } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{6,20}$/.test(registerForm.password)) {
-    errors.password = '密码必须包含大小写字母和数字'
+  } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,20}$/.test(resetForm.newPassword)) {
+    errors.newPassword = '密码必须包含大小写字母和数字'
     isValid = false
   }
   
   // 验证确认密码
-  if (!registerForm.confirmPassword) {
-    errors.confirmPassword = '请再次输入密码'
+  if (!resetForm.confirmPassword) {
+    errors.confirmPassword = '请再次输入新密码'
     isValid = false
-  } else if (registerForm.confirmPassword !== registerForm.password) {
+  } else if (resetForm.confirmPassword !== resetForm.newPassword) {
     errors.confirmPassword = '两次输入的密码不一致'
-    isValid = false
-  }
-  
-  // 验证证件类型
-  if (!registerForm.idType) {
-    errors.idType = '请选择证件类型'
-    isValid = false
-  }
-  
-  // 验证证件号码
-  if (!registerForm.idNumber) {
-    errors.idNumber = '请输入证件号码'
-    isValid = false
-  } else if (registerForm.idType === '身份证' && !/^[1-9]\d{5}(19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dX]$/.test(registerForm.idNumber)) {
-    errors.idNumber = '请输入有效的身份证号码'
-    isValid = false
-  }
-  
-  // 验证姓名
-  if (!registerForm.name) {
-    errors.name = '请输入姓名'
     isValid = false
   }
   
@@ -277,7 +188,7 @@ const validateForm = () => {
 }
 
 const sendVerificationCode = async () => {
-  if (!registerForm.email) {
+  if (!resetForm.email) {
     errors.email = '请先输入邮箱地址'
     return
   }
@@ -286,8 +197,8 @@ const sendVerificationCode = async () => {
     loading.value = true
     const response = await axios({
       method: 'post',
-      url: `${API_BASE_URL}/api/student/send-verification-code`,
-      params: { email: registerForm.email },
+      url: `${API_BASE_URL}/api/student/send-reset-email`,
+      params: { email: resetForm.email },
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
@@ -333,27 +244,19 @@ const sendVerificationCode = async () => {
   }
 }
 
-const handleRegister = async () => {
+const handleResetPassword = async () => {
   if (validateForm()) {
     try {
       loading.value = true
-      // 构建注册请求数据
-      const registerData = {
-        email: registerForm.email,
-        identityDocumentNumber: registerForm.idNumber,
-        identityDocumentType: getDocumentTypeValue(registerForm.idType),
-        name: registerForm.name,
-        password: registerForm.password,
-        phone: registerForm.phone,
-        verificationCode: registerForm.verificationCode
-      }
-      
-      console.log('注册数据:', registerData)
-      
+      // 重置密码
       const response = await axios({
         method: 'post',
-        url: `${API_BASE_URL}/api/student/register`,
-        data: registerData,
+        url: `${API_BASE_URL}/api/student/reset-password`,
+        params: {
+          email: resetForm.email,
+          code: resetForm.verificationCode,
+          newPassword: resetForm.newPassword
+        },
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -362,41 +265,34 @@ const handleRegister = async () => {
 
       if (response.data.code === 200) {
         ElMessage({
-          message: response.data.message || '注册成功！请登录您的账号',
+          message: response.data.message || '密码重置成功，请使用新密码登录',
           type: 'success',
           duration: 3000,
           showClose: true
         })
         
-        // 注册成功后跳转到登录页面
+        // 重置成功后跳转到登录页面
         setTimeout(() => {
           goToLogin()
         }, 1000)
       } else {
-        ElMessage.error(response.data.message || '注册失败')
+        ElMessage.error(response.data.message || '密码重置失败')
       }
     } catch (error) {
-      console.error('注册错误:', error.response?.data)
-      let errorMessage = '注册失败，请稍后重试'
+      console.error('重置密码错误:', error.response?.data)
+      let errorMessage = '重置密码失败，请稍后重试'
       
       if (error.response) {
         const { data } = error.response
-        if (data.code === 500 && data.data) {
-          // 处理参数校验失败的情况
-          const validationErrors = data.data
-          const firstError = Object.values(validationErrors)[0]
-          errorMessage = firstError || '注册信息有误，请检查后重试'
-        } else {
-          switch (error.response.status) {
-            case 400:
-              errorMessage = data.message || '注册信息有误，请检查后重试'
-              break
-            case 500:
-              errorMessage = data.message || '服务器内部错误，请稍后重试'
-              break
-            default:
-              errorMessage = data.message || '注册失败，请稍后重试'
-          }
+        switch (error.response.status) {
+          case 400:
+            errorMessage = data.message || '验证码错误或已过期'
+            break
+          case 404:
+            errorMessage = data.message || '未找到该用户信息'
+            break
+          default:
+            errorMessage = data.message || '重置密码失败，请稍后重试'
         }
       }
       
@@ -410,17 +306,6 @@ const handleRegister = async () => {
       loading.value = false
     }
   }
-}
-
-const getDocumentTypeValue = (type) => {
-  const typeMap = {
-    '身份证': 0,
-    '护照': 1,
-    '港澳通行证': 2,
-    '台湾通行证': 3,
-    '其他': 4
-  }
-  return typeMap[type] ?? 0
 }
 
 const goToLogin = () => {
@@ -662,5 +547,10 @@ label {
 .send-code-btn {
   white-space: nowrap;
   min-width: 120px;
+}
+
+.send-code-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 </style> 

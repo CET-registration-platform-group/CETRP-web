@@ -76,6 +76,12 @@ const userInfo = reactive({
   department: ''
 })
 
+// 报名状态
+const registrationStatus = reactive({
+  step: 1,
+  completedSteps: []
+})
+
 // 菜单项
 const menuItems = [
   { title: '报名协议', path: '/home/agreement', icon: 'Document' },
@@ -86,9 +92,6 @@ const menuItems = [
   { title: '口试报考', path: '/home/oral-exam', icon: 'Microphone' },
   { title: '口试缴费', path: '/home/oral-payment', icon: 'Money' },
   { title: '完成报名', path: '/home/complete', icon: 'Finished' },
-  { title: '打印准考证', path: '/home/print-ticket', icon: 'Printer' },
-  { title: '参加考试', path: '/home/exam', icon: 'Reading' },
-  { title: '查询成绩', path: '/home/result', icon: 'DataAnalysis' }
 ]
 
 // 步骤
@@ -101,9 +104,6 @@ const steps = [
   { title: '口试报考', step: 6 },
   { title: '口试缴费', step: 7 },
   { title: '完成报名', step: 8 },
-  { title: '打印准考证', step: 9 },
-  { title: '参加考试', step: 10 },
-  { title: '结束', step: 11 }
 ]
 
 // 当前激活的菜单项
@@ -112,7 +112,7 @@ const activeIndex = computed(() => route.path)
 // 当前激活的步骤
 const activeStep = computed(() => {
   const currentMeta = route.meta
-  return currentMeta.step || 1
+  return currentMeta.step || registrationStatus.step
 })
 
 // 导航方法
@@ -120,8 +120,30 @@ const navigateTo = (path) => {
   router.push(path)
 }
 
+// 获取报名信息
+const getRegistrationInfo = async () => {
+  try {
+    // 模拟获取报名信息
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // 模拟报名状态数据
+    registrationStatus.step = 1
+    registrationStatus.completedSteps = []
+    
+    // 可以从localStorage获取之前保存的状态
+    const savedStatus = localStorage.getItem('registrationStatus')
+    if (savedStatus) {
+      const status = JSON.parse(savedStatus)
+      registrationStatus.step = status.step
+      registrationStatus.completedSteps = status.completedSteps
+    }
+  } catch (error) {
+    console.error('获取报名信息失败:', error)
+  }
+}
+
 // 获取用户信息
-onMounted(() => {
+onMounted(async () => {
   const userStr = localStorage.getItem('user')
   if (userStr) {
     const user = JSON.parse(userStr)
@@ -131,13 +153,18 @@ onMounted(() => {
     userInfo.department = user.department
   } else {
     router.push('/login')
+    return
   }
+
+  // 获取报名信息
+  await getRegistrationInfo()
 })
 
 // 退出登录
 const handleLogout = () => {
   if (confirm('确定要退出登录吗？')) {
     localStorage.removeItem('user')
+    localStorage.removeItem('token')
     alert('退出成功')
     router.push('/login')
   }
