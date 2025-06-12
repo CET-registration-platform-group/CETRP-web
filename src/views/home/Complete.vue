@@ -259,7 +259,7 @@ const checkExamStatus = () => {
     writtenExamInfo.hasApplied = true
     writtenExamInfo.examNames = exams.examDetails.map(exam => exam.name).join('、')
     writtenExamInfo.examTime = exams.examDetails[0].time
-    writtenExamInfo.examLocation = '郑州大学新校区第一教学楼'
+    writtenExamInfo.examLocation = '河南科技学院新东校区 A#101 25号座位'
   }
 
   // 检查口试报名状态
@@ -276,7 +276,7 @@ const checkExamStatus = () => {
       oralExamInfo.hasApplied = true
       oralExamInfo.examNames = exams.examDetails.map(exam => exam.name).join('、')
       oralExamInfo.examTime = exams.examDetails[0].time
-      oralExamInfo.examLocation = '郑州大学新校区第一教学楼'
+      oralExamInfo.examLocation = '河南科技学院 0#508 13号座位'
     }
   }
 }
