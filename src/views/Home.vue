@@ -8,7 +8,7 @@
         </div>
         <div class="user-info">
           <span>欢迎您，{{ userInfo.name }}</span>
-          <button class="logout-btn" @click="handleLogout">退出登录</button>
+          <button class="logout-btn" @click="showLogoutModal = true">退出登录</button>
         </div>
       </div>
     </header>
@@ -58,6 +58,19 @@
         <p>© 2025 大学生四六级考试报名系统 All Rights Reserved</p>
       </div>
     </footer>
+
+    <!-- 退出登录弹窗 -->
+    <div v-if="showLogoutModal" class="modal-overlay" @click="showLogoutModal = false">
+      <div class="modal-content" @click.stop>
+        <div class="modal-body">
+          <p>确定要退出登录吗？</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-cancel" @click="showLogoutModal = false">取消</button>
+          <button class="btn btn-confirm" @click="handleLogout">确定登出</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -67,6 +80,9 @@ import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
 const route = useRoute()
+
+// 弹窗状态
+const showLogoutModal = ref(false)
 
 // 用户信息
 const userInfo = reactive({
@@ -162,12 +178,10 @@ onMounted(async () => {
 
 // 退出登录
 const handleLogout = () => {
-  if (confirm('确定要退出登录吗？')) {
-    localStorage.removeItem('user')
-    localStorage.removeItem('token')
-    alert('退出成功')
-    router.push('/login')
-  }
+  localStorage.removeItem('user')
+  localStorage.removeItem('token')
+  showLogoutModal.value = false
+  router.push('/login')
 }
 </script>
 
@@ -410,6 +424,147 @@ const handleLogout = () => {
   
   .step-title {
     font-size: 10px;
+  }
+}
+
+/* 弹窗样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(3px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.25);
+  width: 380px;
+  max-width: 90vw;
+  animation: modalSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-body {
+  padding: 32px 24px 24px;
+  text-align: center;
+}
+
+.modal-body p {
+  margin: 0;
+  font-size: 18px;
+  color: #2c3e50;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.3px;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 16px;
+  padding: 0 24px 28px;
+  justify-content: center;
+}
+
+.btn {
+  padding: 12px 32px;
+  border-radius: 8px;
+  border: none;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 100px;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn-cancel {
+  background-color: #f8f9fa;
+  color: #6c757d;
+  border: 2px solid #e9ecef;
+}
+
+.btn-cancel:hover {
+  background-color: #e9ecef;
+  color: #495057;
+  border-color: #dee2e6;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(108, 117, 125, 0.15);
+}
+
+.btn-confirm {
+  background: linear-gradient(135deg, #409EFF 0%, #5cadff 100%);
+  color: white;
+  border: 2px solid #409EFF;
+}
+
+.btn-confirm:hover {
+  background: linear-gradient(135deg, #5cadff 0%, #409EFF 100%);
+  border-color: #5cadff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(64, 158, 255, 0.35);
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .modal-content {
+    width: 90vw;
+    margin: 20px;
+    border-radius: 12px;
+  }
+  
+  .modal-body {
+    padding: 28px 20px 20px;
+  }
+  
+  .modal-body p {
+    font-size: 16px;
+  }
+  
+  .modal-footer {
+    padding: 0 20px 24px;
+    gap: 12px;
+  }
+  
+  .btn {
+    padding: 10px 24px;
+    font-size: 14px;
+    min-width: 80px;
   }
 }
 </style>

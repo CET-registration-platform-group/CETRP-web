@@ -48,9 +48,9 @@
                 />
                 <label :for="method.id"></label>
               </div>
-              <div class="method-logo">
+              <!-- <div class="method-logo">
                 <img :src="method.logo" :alt="method.name" />
-              </div>
+              </div> -->
               <div class="method-name">{{ method.name }}</div>
             </div>
           </div>

@@ -93,9 +93,113 @@
       <button 
         class="btn btn-primary" 
         @click="handlePrintTicket"
+        :disabled="isGeneratingPDF"
       >
-        打印准考证
+        {{ isGeneratingPDF ? '正在生成PDF...' : '打印准考证' }}
       </button>
+    </div>
+
+    <!-- PDF生成用的隐藏容器 -->
+    <div ref="pdfContainer" class="pdf-container" style="display: none;">
+      <div class="pdf-content">
+        <div class="pdf-header">
+          <h1>全国大学英语四六级考试</h1>
+          <h1>准考证</h1>
+        </div>
+        
+        <div class="pdf-section">
+          <h3>身份信息</h3>
+          <table class="pdf-table">
+            <tbody>
+              <tr>
+                <td class="pdf-label">姓名：</td>
+                <td class="pdf-value">{{ userInfo.name }}</td>
+                <td class="pdf-label">学号：</td>
+                <td class="pdf-value">{{ userInfo.studentId }}</td>
+              </tr>
+              <tr>
+                <td class="pdf-label">证件类型：</td>
+                <td class="pdf-value">{{ userInfo.idType }}</td>
+                <td class="pdf-label">证件号：</td>
+                <td class="pdf-value">{{ userInfo.idNumber }}</td>
+              </tr>
+              <tr>
+                <td class="pdf-label">手机号：</td>
+                <td class="pdf-value">{{ userInfo.phone }}</td>
+                <td class="pdf-label">邮箱：</td>
+                <td class="pdf-value">{{ userInfo.email }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="pdf-section" v-if="writtenExamInfo.hasApplied">
+          <h3>笔试考试信息</h3>
+          <table class="pdf-table">
+            <tbody>
+              <tr>
+                <td class="pdf-label">考试科目：</td>
+                <td class="pdf-value" colspan="3">{{ writtenExamInfo.examNames }}</td>
+              </tr>
+              <tr>
+                <td class="pdf-label">考试时间：</td>
+                <td class="pdf-value" colspan="3">{{ writtenExamInfo.examTime }}</td>
+              </tr>
+              <tr>
+                <td class="pdf-label">考试地点：</td>
+                <td class="pdf-value" colspan="3">{{ writtenExamInfo.examLocation }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pdf-section" v-if="!writtenExamInfo.hasApplied">
+          <h2>笔试考试信息</h2>
+          <p class="pdf-center-text">该考试未报名</p>
+        </div>
+
+        <div class="pdf-section" v-if="oralExamInfo.hasApplied">
+          <h3>口试考试信息</h3>
+          <table class="pdf-table">
+            <tbody>
+              <tr>
+                <td class="pdf-label">考试科目：</td>
+                <td class="pdf-value" colspan="3">{{ oralExamInfo.examNames }}</td>
+              </tr>
+              <tr>
+                <td class="pdf-label">考试时间：</td>
+                <td class="pdf-value" colspan="3">{{ oralExamInfo.examTime }}</td>
+              </tr>
+              <tr>
+                <td class="pdf-label">考试地点：</td>
+                <td class="pdf-value" colspan="3">{{ oralExamInfo.examLocation }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pdf-section" v-if="!oralExamInfo.hasApplied">
+          <h2>口试考试信息</h2>
+          <p class="pdf-center-text">该考试未报名</p>
+        </div>
+
+        <div class="pdf-section">
+          <h2>考生须知</h2>
+          <div class="pdf-notice-content">
+            <p class="pdf-notice-item">1. 考试当日考生须携带相应科目准考证、报考时使用身份证件及学校规定其他证件按规定时间到达准考证上指定的考场，迟到考生不得入场，配合监考员完成身份核对，考场签到表上签字，并按考点要求将与考试无关物品放置在指定位置。证件携带不齐全或不配合监考员完成身份核对、签到及拒绝将与考试无关物品放置在指定位置的考生将不得进入考场，情节严重的将按违规处理。</p>
+            
+            <p class="pdf-notice-item">2. 考生进入考场后须按准考证上的位置入座，否则按违规处理。</p>
+            
+            <p class="pdf-notice-item">3. 考生须听从监考员指令，在规定时间打开试卷、作答和停止作答，否则按违规处理。考试期间不得提前离场。</p>
+            
+            <p class="pdf-notice-item">4. 考生在答题前，请认真完成以下内容：(1)请检查试题册背面条形码粘贴条、答题卡的印刷质量，如有问题及时向监考员反映，确认无误后完成以下两点要求；(2)请将试题册背面条形码粘贴条揭下后粘贴在答题卡1的条形码粘贴框内，并将姓名和准考证号填写在试题册背面相应位置；(3)请在答题卡1和答题卡2指定位置用黑色签字笔填写准考证号、姓名和学校名称，并用HB-2B铅笔将对应准考证号的信息点涂黑。</p>
+            
+            <p class="pdf-notice-item">5. 考生在考试过程中，请注意以下内容：(1)所有题目必须在答题卡上规定位置作答，在试题册上或答题卡上非规定位置的作答一律无效；(2)请在规定时间内在答题卡指定位置依次完成作文、听力、阅读、翻译各部分考试，作答作文期间不得翻阅该试题册。听力录音播放完毕后，请立即停止作答，监考员将立即回收答题卡1，得到监考员指令后方可继续作答；(3)作文题内容印在试题册背面，作文题及其他主观题必须用黑色签字笔在答题卡指定区域内作答，不得撕毁试题册。</p>
+            
+            <p class="pdf-notice-item">6. 考生在考试过程中出现以下情况按违规处理：(1)不正确填写（涂）个人信息，错贴、不贴、毁损条形码粘贴条；(2)未按规定翻阅试题册、提前阅读试题、提前或在收答题卡期间作答；(3)未用所规定的笔作答、折叠或毁损答题卡导致无法评卷；(4)考试期间在非听力考试时间佩戴耳机；(5)CET相关规定中规定的违规行为。</p>
+            
+            <p class="pdf-notice-item">7. 在考试过程中出现突发事件导致考试无法正常进行时，考生须听从监考员安排，相关情况未解决之前，不得离开考场。</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -105,9 +209,14 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { registrationService, REGISTRATION_STEPS } from '../../services/registrationService.js'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
+import JSZip from 'jszip'
 
 const router = useRouter()
 const isLoading = ref(false)
+const isGeneratingPDF = ref(false)
+const pdfContainer = ref(null)
 
 const userInfo = reactive({
   name: '',
@@ -224,9 +333,90 @@ onMounted(async () => {
   }
 })
 
-// 跳转到打印准考证页面
-const handlePrintTicket = () => {
-  router.push('/home/print-ticket')
+// 生成PDF并下载
+const handlePrintTicket = async () => {
+  try {
+    isGeneratingPDF.value = true
+    
+    // 显示PDF容器
+    pdfContainer.value.style.display = 'block'
+    
+    // 等待DOM更新
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    // 使用html2canvas将内容转换为图片
+    const canvas = await html2canvas(pdfContainer.value, {
+      scale: 2, // 提高清晰度
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff'
+    })
+    
+    // 隐藏PDF容器
+    pdfContainer.value.style.display = 'none'
+    
+    // 创建PDF文档
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    const imgWidth = 210 // A4纸宽度
+    const pageHeight = 295 // A4纸高度
+    const imgHeight = (canvas.height * imgWidth) / canvas.width
+    let heightLeft = imgHeight
+    
+    let position = 0
+    
+    // 添加图片到PDF
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
+    heightLeft -= pageHeight
+    
+    // 如果内容超过一页，添加新页面
+    while (heightLeft >= 0) {
+      position = heightLeft - imgHeight
+      pdf.addPage()
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+    }
+    
+    // 生成文件名（使用证件号码）
+    const fileName = `大学英语四六级考试准考证(${userInfo.idNumber})`
+    const zipName = fileName
+    
+    // 创建JSZip实例
+    const zip = new JSZip()
+    
+    // 将PDF直接添加到压缩包中
+    const pdfBlob = pdf.output('blob')
+    zip.file(`${fileName}.pdf`, pdfBlob)
+    
+    // 生成压缩包
+    const zipBlob = await zip.generateAsync({ type: 'blob' })
+    
+    // 创建下载链接
+    const url = URL.createObjectURL(zipBlob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${zipName}.zip`
+    
+    // 触发下载
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    // 释放URL对象
+    URL.revokeObjectURL(url)
+    
+    ElMessage.success('准考证文件已生成并下载到您的下载文件夹')
+    
+  } catch (error) {
+    console.error('生成PDF失败:', error)
+    ElMessage.error('生成PDF失败，请重试')
+    
+    // 确保隐藏PDF容器
+    if (pdfContainer.value) {
+      pdfContainer.value.style.display = 'none'
+    }
+  } finally {
+    isGeneratingPDF.value = false
+  }
 }
 </script>
 
@@ -311,6 +501,102 @@ const handlePrintTicket = () => {
   display: flex;
   justify-content: center;
   gap: 20px;
+}
+
+/* PDF样式 */
+.pdf-container {
+  position: fixed;
+  top: -9999px;
+  left: -9999px;
+  width: 800px; /* 保持宽度不变，以适应A4纸 */
+  background: white;
+  padding: 40px; /* 增大内边距 */
+  font-family: 'SimSun', serif;
+}
+
+.pdf-content {
+  max-width: 100%;
+}
+
+.pdf-header {
+  text-align: center;
+  margin-bottom: 30px; /* 增大间距 */
+  border-bottom: 2px solid #000;
+  padding-bottom: 15px;
+}
+
+.pdf-header h1 {
+  font-size: 24px; /* 增大字体 */
+  font-weight: bold;
+  margin-bottom: 10px; /* 增大间距 */
+  color: #000;
+}
+
+.pdf-section {
+  margin-bottom: 25px; /* 增大间距 */
+}
+
+.pdf-section h2 {
+  font-size: 18px; /* 增大字体 */
+  font-weight: bold;
+  margin-bottom: 12px; /* 增大间距 */
+  color: #000;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 5px;
+}
+
+.pdf-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 15px; /* 增大间距 */
+}
+
+.pdf-table td {
+  border: 1px solid #000;
+  padding: 8px 12px; /* 增大内边距 */
+  font-size: 14px; /* 增大字体 */
+  vertical-align: top;
+}
+
+.pdf-label {
+  background-color: #f5f5f5;
+  font-weight: bold;
+  width: 110px; /* 增大宽度 */
+  text-align: center;
+}
+
+.pdf-value {
+  background-color: #fff;
+  min-width: 160px; /* 增大最小宽度 */
+}
+
+.pdf-header-cell {
+  background-color: #f5f5f5;
+  font-weight: bold;
+  text-align: center;
+}
+
+.pdf-center-text {
+  text-align: center;
+  font-size: 16px; /* 增大字体 */
+  margin-top: 15px; /* 增大间距 */
+  color: #333;
+}
+
+.pdf-notice-content {
+  margin-top: 15px; /* 增大间距 */
+}
+
+.pdf-notice-item {
+  font-size: 12px; /* 增大字体 */
+  line-height: 1.6; /* 增大行高 */
+  margin-bottom: 0;
+  text-align: justify;
+  color: #000;
+}
+
+.pdf-notice-item:last-child {
+  margin-bottom: 0;
 }
 
 @media (max-width: 768px) {
