@@ -105,10 +105,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
-
-// 添加API基础URL配置
-const API_BASE_URL = 'http://127.0.0.1:8080'
+import { USER_API, request } from '../../config/api.js'
 
 const emit = defineEmits(['switch-to-login'])
 const router = useRouter()
@@ -195,42 +192,33 @@ const sendVerificationCode = async () => {
   
   try {
     loading.value = true
-    const response = await axios({
-      method: 'post',
-      url: `${API_BASE_URL}/api/student/send-reset-email`,
-      params: { email: resetForm.email },
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
+    // 构建查询参数
+    const params = new URLSearchParams({
+      email: resetForm.email
+    })
+    
+    const response = await request(`${USER_API.SEND_RESET_EMAIL}?${params}`, {
+      method: 'POST'
     })
 
-    if (response.data.code === 200) {
+    if (response.code === 200) {
       ElMessage({
-        message: response.data.message || '验证码已发送，请查收邮件',
+        message: response.message || '验证码已发送，请查收邮件',
         type: 'success',
         duration: 3000,
         showClose: true
       })
     } else {
-      ElMessage.error(response.data.message || '发送验证码失败')
+      ElMessage.error(response.message || '发送验证码失败')
     }
   } catch (error) {
-    console.error('发送验证码错误:', error.response?.data)
+    console.error('发送验证码错误:', error.message)
     let errorMessage = '发送验证码失败，请稍后重试'
     
-    if (error.response) {
-      const { data } = error.response
-      switch (error.response.status) {
-        case 400:
-          errorMessage = data.message || '邮箱格式不正确'
-          break
-        case 500:
-          errorMessage = data.message || '服务器内部错误，请稍后重试'
-          break
-        default:
-          errorMessage = data.message || '发送验证码失败，请稍后重试'
-      }
+    if (error.message.includes('400')) {
+      errorMessage = '邮箱格式不正确'
+    } else if (error.message.includes('500')) {
+      errorMessage = '服务器内部错误，请稍后重试'
     }
     
     ElMessage({
@@ -248,24 +236,21 @@ const handleResetPassword = async () => {
   if (validateForm()) {
     try {
       loading.value = true
-      // 重置密码
-      const response = await axios({
-        method: 'post',
-        url: `${API_BASE_URL}/api/student/reset-password`,
-        params: {
-          email: resetForm.email,
-          code: resetForm.verificationCode,
-          newPassword: resetForm.newPassword
-        },
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
+      
+      // 构建查询参数
+      const params = new URLSearchParams({
+        email: resetForm.email,
+        code: resetForm.verificationCode,
+        newPassword: resetForm.newPassword
+      })
+      
+      const data = await request(`${USER_API.RESET_PASSWORD}?${params}`, {
+        method: 'POST'
       })
 
-      if (response.data.code === 200) {
+      if (data.code === 200) {
         ElMessage({
-          message: response.data.message || '密码重置成功，请使用新密码登录',
+          message: data.message || '密码重置成功！请使用新密码登录',
           type: 'success',
           duration: 3000,
           showClose: true
@@ -276,24 +261,16 @@ const handleResetPassword = async () => {
           goToLogin()
         }, 1000)
       } else {
-        ElMessage.error(response.data.message || '密码重置失败')
+        ElMessage.error(data.message || '密码重置失败')
       }
     } catch (error) {
-      console.error('重置密码错误:', error.response?.data)
+      console.error('重置密码错误:', error)
       let errorMessage = '重置密码失败，请稍后重试'
       
-      if (error.response) {
-        const { data } = error.response
-        switch (error.response.status) {
-          case 400:
-            errorMessage = data.message || '验证码错误或已过期'
-            break
-          case 404:
-            errorMessage = data.message || '未找到该用户信息'
-            break
-          default:
-            errorMessage = data.message || '重置密码失败，请稍后重试'
-        }
+      if (error.message.includes('400')) {
+        errorMessage = '重置信息有误，请检查后重试'
+      } else if (error.message.includes('500')) {
+        errorMessage = '服务器内部错误，请稍后重试'
       }
       
       ElMessage({

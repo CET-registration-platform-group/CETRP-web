@@ -156,10 +156,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
-
-// 添加API基础URL配置
-const API_BASE_URL = 'http://127.0.0.1:8080'
+import { USER_API, request } from '../../config/api.js'
 
 const emit = defineEmits(['switch-to-login'])
 const router = useRouter()
@@ -284,42 +281,33 @@ const sendVerificationCode = async () => {
   
   try {
     loading.value = true
-    const response = await axios({
-      method: 'post',
-      url: `${API_BASE_URL}/api/student/send-verification-code`,
-      params: { email: registerForm.email },
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
+    // 构建查询参数
+    const params = new URLSearchParams({
+      email: registerForm.email
+    })
+    
+    const response = await request(`${USER_API.SEND_VERIFICATION_CODE}?${params}`, {
+      method: 'POST'
     })
 
-    if (response.data.code === 200) {
+    if (response.code === 200) {
       ElMessage({
-        message: response.data.message || '验证码已发送，请查收邮件',
+        message: response.message || '验证码已发送，请查收邮件',
         type: 'success',
         duration: 3000,
         showClose: true
       })
     } else {
-      ElMessage.error(response.data.message || '发送验证码失败')
+      ElMessage.error(response.message || '发送验证码失败')
     }
   } catch (error) {
-    console.error('发送验证码错误:', error.response?.data)
+    console.error('发送验证码错误:', error.message)
     let errorMessage = '发送验证码失败，请稍后重试'
     
-    if (error.response) {
-      const { data } = error.response
-      switch (error.response.status) {
-        case 400:
-          errorMessage = data.message || '邮箱格式不正确'
-          break
-        case 500:
-          errorMessage = data.message || '服务器内部错误，请稍后重试'
-          break
-        default:
-          errorMessage = data.message || '发送验证码失败，请稍后重试'
-      }
+    if (error.message.includes('400')) {
+      errorMessage = '邮箱格式不正确'
+    } else if (error.message.includes('500')) {
+      errorMessage = '服务器内部错误，请稍后重试'
     }
     
     ElMessage({
@@ -350,19 +338,14 @@ const handleRegister = async () => {
       
       console.log('注册数据:', registerData)
       
-      const response = await axios({
-        method: 'post',
-        url: `${API_BASE_URL}/api/student/register`,
-        data: registerData,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        }
+      const data = await request(USER_API.REGISTER, {
+        method: 'POST',
+        body: JSON.stringify(registerData)
       })
 
-      if (response.data.code === 200) {
+      if (data.code === 200) {
         ElMessage({
-          message: response.data.message || '注册成功！请登录您的账号',
+          message: data.message || '注册成功！请登录您的账号',
           type: 'success',
           duration: 3000,
           showClose: true
@@ -373,31 +356,16 @@ const handleRegister = async () => {
           goToLogin()
         }, 1000)
       } else {
-        ElMessage.error(response.data.message || '注册失败')
+        ElMessage.error(data.message || '注册失败')
       }
     } catch (error) {
-      console.error('注册错误:', error.response?.data)
+      console.error('注册错误:', error)
       let errorMessage = '注册失败，请稍后重试'
       
-      if (error.response) {
-        const { data } = error.response
-        if (data.code === 500 && data.data) {
-          // 处理参数校验失败的情况
-          const validationErrors = data.data
-          const firstError = Object.values(validationErrors)[0]
-          errorMessage = firstError || '注册信息有误，请检查后重试'
-        } else {
-          switch (error.response.status) {
-            case 400:
-              errorMessage = data.message || '注册信息有误，请检查后重试'
-              break
-            case 500:
-              errorMessage = data.message || '服务器内部错误，请稍后重试'
-              break
-            default:
-              errorMessage = data.message || '注册失败，请稍后重试'
-          }
-        }
+      if (error.message.includes('400')) {
+        errorMessage = '注册信息有误，请检查后重试'
+      } else if (error.message.includes('500')) {
+        errorMessage = '服务器内部错误，请稍后重试'
       }
       
       ElMessage({

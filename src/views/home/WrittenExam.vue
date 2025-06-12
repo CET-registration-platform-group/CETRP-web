@@ -24,7 +24,7 @@
         :key="exam.id" 
         class="exam-item"
         :class="{ 'selected': selectedExams.includes(exam.id) }"
-        @click="toggleExam(exam.id)"
+        @click="isStepCompleted ? null : toggleExam(exam.id)"
       >
         <div class="exam-info">
           <div class="exam-name">{{ exam.name }}</div>
@@ -37,6 +37,7 @@
           <el-checkbox 
             v-model="selectedExams" 
             :label="exam.id"
+            :disabled="isStepCompleted"
           ></el-checkbox>
         </div>
       </div>
@@ -60,9 +61,17 @@
       ></el-alert>
     </div>
 
-    <div class="action-buttons">
-      <button class="btn btn-default" @click="handleBack">返回</button>
-      <button class="btn btn-primary" @click="handleNext">下一步</button>
+    <div class="action-buttons" :style="{ justifyContent: 'center' }">
+      <button 
+        class="btn" 
+        :class="{ 'btn-primary': !isStepCompleted, 'btn-completed': isStepCompleted }"
+        @click="handleNext" 
+        :disabled="isStepCompleted || loading || selectedExams.length === 0"
+      >
+        <span v-if="isStepCompleted">✓ 已完成</span>
+        <span v-else-if="loading">处理中...</span>
+        <span v-else>下一步</span>
+      </button>
     </div>
   </div>
 </template>
@@ -71,10 +80,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { registrationService, REGISTRATION_STEPS } from '../../services/registrationService.js'
 
 const router = useRouter()
 const selectedExams = ref([])
 const showError = ref(false)
+const loading = ref(false)
+
+// 检查步骤是否已完成
+const isStepCompleted = computed(() => {
+  return registrationService.completedSteps.includes(REGISTRATION_STEPS.WRITTEN_APPLY)
+})
 
 const examList = [
   {
@@ -99,6 +115,7 @@ const totalPrice = computed(() => {
 })
 
 const toggleExam = (examId) => {
+  if (isStepCompleted.value) return; // 如果已完成，禁用选择
   const index = selectedExams.value.indexOf(examId)
   if (index === -1) {
     selectedExams.value.push(examId)
@@ -108,22 +125,34 @@ const toggleExam = (examId) => {
   showError.value = false
 }
 
-const handleBack = () => {
-  router.push('/home/confirm-info')
+// 获取用户信息
+const getUserInfo = () => {
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    return JSON.parse(userStr)
+  }
+  return null
 }
 
 const handleNext = async () => {
+  if (isStepCompleted.value) {
+    return
+  }
+
   if (selectedExams.value.length === 0) {
     showError.value = true
     return
   }
 
+  const userInfo = getUserInfo()
+  if (!userInfo) {
+    ElMessage.error('用户信息不存在，请重新登录')
+    router.push('/login')
+    return
+  }
+
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/login')
-      return
-    }
+    loading.value = true
 
     // 保存选择的考试信息
     const selectedExamDetails = examList
@@ -142,37 +171,54 @@ const handleNext = async () => {
 
     localStorage.setItem('writtenExams', JSON.stringify(examData))
 
-    // 调用完成步骤接口
-    const response = await fetch('/api/student/registration/complete-step', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        step: 4,
-        data: examData
-      })
-    })
+    // 调用报名服务完成步骤
+    await registrationService.completeStep(userInfo.id, REGISTRATION_STEPS.WRITTEN_APPLY)
 
-    const data = await response.json()
-    if (data.code === 200) {
-      router.push('/home/written-payment')
-    } else {
-      alert(data.message || '操作失败')
+    ElMessage.success('笔试报考成功')
+
+    // 跳转到下一步
+    const nextStep = registrationService.getNextStep()
+    if (nextStep) {
+      setTimeout(() => {
+        router.push(nextStep.path)
+      }, 500)
     }
   } catch (error) {
     console.error('完成步骤失败:', error)
-    alert('操作失败，请重试')
+    ElMessage.error('操作失败，请重试')
+  } finally {
+    loading.value = false
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   // 检查是否有已保存的选择
   const savedExamsStr = localStorage.getItem('writtenExams')
   if (savedExamsStr) {
     const savedExams = JSON.parse(savedExamsStr)
     selectedExams.value = savedExams.examDetails.map(exam => exam.id)
+  }
+
+  // 获取报名信息
+  const userInfo = getUserInfo()
+  if (!userInfo) {
+    router.push('/login')
+    return
+  }
+
+  try {
+    await registrationService.getRegistrationInfo(userInfo.id)
+    
+    // 如果当前步骤已完成，显示已完成的提示
+    if (isStepCompleted.value) {
+      // 确保已选择的考试科目显示
+      if (savedExamsStr) {
+        const savedExams = JSON.parse(savedExamsStr)
+        selectedExams.value = savedExams.examDetails.map(exam => exam.id)
+      }
+    }
+  } catch (error) {
+    console.error('获取报名信息失败:', error)
   }
 })
 </script>
@@ -212,55 +258,62 @@ onMounted(() => {
 }
 
 .exam-item {
+  background-color: #f9fafc;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 15px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  background: white;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease-in-out;
 }
 
 .exam-item:hover {
-  border-color: var(--primary);
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+  border-color: #409EFF;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.1);
 }
 
 .exam-item.selected {
-  border-color: var(--primary);
-  background-color: var(--primary-light);
+  border-color: #409EFF;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.1);
+  background-color: #ecf5ff;
 }
 
 .exam-info {
-  flex: 1;
+  flex-grow: 1;
 }
 
 .exam-name {
   font-size: 16px;
-  font-weight: 500;
-  color: var(--text-primary);
-  margin-bottom: 8px;
+  font-weight: 600;
+  color: #303133;
+  margin-bottom: 5px;
 }
 
 .exam-details {
-  display: flex;
-  gap: 20px;
-  color: var(--text-secondary);
   font-size: 14px;
+  color: #606266;
+}
+
+.exam-time {
+  margin-right: 15px;
 }
 
 .exam-price {
-  color: var(--primary);
-  font-weight: 500;
+  font-weight: 600;
+  color: #E6A23C;
+}
+
+.exam-select .el-checkbox {
+  transform: scale(1.2);
 }
 
 .exam-summary {
-  background: white;
-  border: 1px solid var(--border-color);
+  background-color: #ecf5ff;
+  border: 1px solid #d9ecff;
   border-radius: 8px;
-  padding: 20px;
+  padding: 15px 20px;
   margin-bottom: 30px;
 }
 
@@ -271,14 +324,16 @@ onMounted(() => {
 }
 
 .summary-text {
-  color: var(--text-primary);
   font-size: 16px;
+  color: #409EFF;
+  font-weight: 500;
 }
 
 .total-price {
+  font-size: 20px;
+  font-weight: 700;
+  color: #E6A23C;
   margin-left: 20px;
-  color: var(--primary);
-  font-weight: 500;
 }
 
 .error-message {
@@ -287,23 +342,91 @@ onMounted(() => {
 
 .action-buttons {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   gap: 20px;
+  margin-top: 20px;
 }
 
-@media (max-width: 768px) {
-  .exam-details {
-    flex-direction: column;
-    gap: 5px;
-  }
-  
-  .action-buttons {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  .btn {
-    width: 100%;
-  }
+.btn {
+  padding: 12px 30px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 150px;
 }
+
+.btn-primary {
+  background-color: #409EFF;
+  color: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
+}
+
+.btn-primary:hover {
+  background-color: #66b1ff;
+  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.3);
+}
+
+.btn-primary:active {
+  background-color: #3a8ee6;
+  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.15);
+}
+
+.btn-default {
+  background-color: #f0f2f5;
+  color: #606266;
+  border: 1px solid #dcdfe6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.btn-default:hover {
+  background-color: #e6e8eb;
+  border-color: #d0d3d9;
+}
+
+.btn-default:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #f5f7fa;
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #a0cfff;
+  box-shadow: none;
+}
+
+.btn-completed {
+  background-color: #67c23a;
+  color: white;
+  cursor: not-allowed;
+  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.2);
+}
+
+.btn-completed:hover {
+  background-color: #85ce61;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid #fff;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 </style> 

@@ -63,13 +63,14 @@
       </div>
       
       <div class="action-buttons">
-        <button class="btn btn-default" @click="handleBack">返回</button>
         <button 
-          class="btn btn-primary" 
+          class="btn" 
+          :class="{ 'btn-primary': !isPaymentCompleted, 'btn-completed': isPaymentCompleted }"
           @click="handlePay" 
-          :disabled="isLoading || !selectedMethod"
+          :disabled="isLoading || !selectedMethod || isPaymentCompleted"
         >
-          <span v-if="isLoading">支付中...</span>
+          <span v-if="isPaymentCompleted">✓ 已支付</span>
+          <span v-else-if="isLoading">支付中...</span>
           <span v-else>确认支付</span>
         </button>
       </div>
@@ -103,13 +104,20 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { registrationService, REGISTRATION_STEPS } from '../../services/registrationService.js'
 
 const router = useRouter()
 const isLoading = ref(false)
 const selectedMethod = ref('')
 const paymentStatus = ref(null)
+
+// 检查支付是否已完成
+const isPaymentCompleted = computed(() => {
+  return registrationService.completedSteps.includes(REGISTRATION_STEPS.WRITTEN_PAY)
+})
 
 // 支付方式
 const paymentMethods = [
@@ -121,12 +129,12 @@ const paymentMethods = [
   {
     id: 'wechat',
     name: '微信支付',
-    logo: 'data:image/svg+xml;base64,PHN2ZyB0PSIxNTU1OTkxNjQzMTg5IiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjIzNDgiIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cGF0aCBkPSJNNjg4LjM2NTcxNSAzNDMuNDI0MTQ4Yy0xNi4zODc5ODEgMC0zMi43NDUxNzIgMTAuOTM0MTIyLTMyLjc0NTE3MiAyNy4zNDc4ODMgMCAxNi4zNTQyMTIgMTYuMzU3MjgyIDI3LjMxNDExNCAzMi43NDUxNzIgMjcuMzE0MTE0IDE2LjQyMjc3NSAwIDMzLjA3MTI5LTEwLjk2MDk4IDMzLjA3MTI5LTI3LjMxNDExNEMyMjEuNDM3MDA1IDM1NC4zNTgyNyAyMDQuNzg4NDg5IDM0My40MjQxNDggMTg4LjM2NTcxNSAzNDMuNDI0MTQ4ek01MBIB1MDkuOTcyODc4IDE2LjM4Nzk4MSA0ODguMDE3Mjk3IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzMjAuNzUwMTc5LCAxMzQuMzEwNDk1KSIgZmlsbD0iIzUwQjY3NCIgcC1pZD0iMjM0OSI+PC9wYXRoPjwvc3ZnPg=='
+    logo: 'data:image/svg+xml;base64,PHN2ZyB0PSIxNTU1OTkxNjQzMTg5IiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjIzNDgiIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cGF0aCBkPSJNNjg4LjM2NTcxNSAzNDMuNDI0MTQ4Yy0xNi4zODc5ODEgMC0zMi43NDUxNzIgMTAuOTM0MTIyLTMyLjc0NTE3MiAyNy4zNDc4ODMgMCAxNi4zNTQyMTIgMTYuMzU3MjgyIDI3LjMxNDExNCAzMi43NDUxNzIgMjcuMzE0MTE0IDE2LjQyMjc3NSAwIDMzLjA3MTI5LTEwLjkyMDk4IDMzLjA3MTI5LTI3LjMxNDExNEMyMjEuNDM3MDA1IDM1NC4zNTgyNyAyMDQuNzg4NDg5IDM0My40MjQxNDggMTg4LjM2NTcxNSAzNDMuNDI0MTQ4ek01MBIB1MDkuOTcyODc4IDE2LjM4Nzk4MSA0ODguMDE3Mjk3IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzMjAuNzUwMTc5LCAxMzQuMzEwNDk1KSIgZmlsbD0iIzUwQjY3NCIgcC1pZD0iMjM0OSI+PC9wYXRoPjwvc3ZnPg=='
   },
   {
     id: 'unionpay',
     name: '银联支付',
-    logo: 'data:image/svg+xml;base64,PHN2ZyB0PSIxNjk4ODQ1NDQyNTkwIiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjYzODgiIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cGF0aCBkPSJNODMxLjggNjUzLjRjMC0xMS42LTkuNC0yMC44LTIwLjgtMjAuOEgyMTNjLTExLjYgMC0yMC44IDkuNC0yMC44IDIwLjh2MzAuNmMwIDExLjYgOS40IDIwLjggMjAuOCAyMC44aDU5OGMxMS42IDAgMjAuOC05LjQgMjAuOC0yMC44di0zMC42ek0yMzMuOCA0OTUuOGg1NTYuNGMxMS42IDAgMjAuOC05LjQgMjAuOC0yMC44di0zMC42YzAtMTEuNi05LjQtMjAuOC0yMC44LTIwLjhIMjMzLjhjLTExLjYgMC0yMC44IDkuNC0yMC44IDIwLjh2MzAuNmMwIDExLjQgOS40IDIwLjggMjAuOCAyMC44eiBtNjEzLjYtMTg0LjZIMTc2LjZjLTMyLjggMC01OS40IDI2LjYtNTkuNCA1OS40djI4Mi44YzAgMzIuOCAyNi42IDU5LjQgNTkuNCA1OS40aDY3MC44YzMyLjggMCA1OS40LTI2LjYgNTkuNC01OS40VjM3MC42Yy0wLjItMzIuOC0yNi44LTU5LjQtNTkuNC01OS40eiIgZmlsbD0iIzFCM0I4OSIgcC1pZD0iNjM4OSI+PC9wYXRoPjxwYXRoIGQ9Ik02ODAuNiA1NDRIMzQzLjRjLTkuNCAwLTE3IDcuNi0xNyAxN3YxOC4yYzAgOS40IDcuNiAxNyAxNyAxN2gzMzcuMmM5LjQgMCAxNy03LjYgMTctMTdWNTYxYzAtOS40LTcuNi0xNy0xNy0xN3pNMTggMCIgZmlsbD0iI0YxN, NkM2OCwgNzMuNiwgODIgNTkuMiwgNjcuNCwgNDkuNCwgNjcuNCwgNDIuNiwgNjcuNCwgMjQ3LjIsIDU2LjQsIDI0Ny4yLCA0OS40LCAyNDcuMiwgNDAuMnYyM2MwIDExLjQgOS40IDIwLjggMjAuOCAyMC44aDEzMi4yYzExLjYgMCAyMC44LTkuNCAyMC44LTIwLjh2LTIzYy0wLjItMTEuNi05LjYtMjEtMjEtMjF6IiBmaWxsPSIjRTYxNzE3IiBwLWlkPSI2MzkwIj48L3BhdGg+PC9zdmc+'
+    logo: 'data:image/svg+xml;base64,PHN2ZyB0PSIxNjk4ODQ1NDQyNTkwIiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjYzODgiIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cGF0aCBkPSJNODMxLjggNjUzLjRjMC0xMS42LTkuNC0yMC44LTIwLjgtMjAuOEgyMTNjLTExLjYgMC0yMC44IDkuNC0yMC44IDIwLjh2MzAuNmMwIDExLjYgOS40IDIwLjggMjAuOCAyMC44aDU5OGMxMS42IDAgMjAuOC05LjQgMjAuOC0yMC44di0zMC42ek0yMzMuOCA0OTUuOGg1NTYuNGMxMS42IDAgMjAuOC05LjQgMjAuOC0yMC44di0zMC42YzAtMTEuNi05LjQtMjAuOC0yMC44LTIwLjhIMjMzLjhjLTExLjYgMC0yMC44IDkuNC0yMC44IDIwLjh2MzAuNmMwIDExLjQgOS40IDIwLjggMjAuOCAyMC44eiBtNjEzLjYtMTg0LjZIMTcwLjZjLTMyLjggMC01OS40IDI2LjYtNTkuNCA1OS40djI4Mi44YzAgMzIuOCAyNi42IDU5LjQgNTkuNCA1OS40aDY3MC44YzMyLjggMCA1OS40LTI2LjYgNTkuNC01OS40VjM3MC42Yy0wLjItMzIuOC0yNi44LTU5LjQtNTkuNC01OS40eiIgZmlsbD0iIzFCM0I4OSIgcC1pZD0iNjM4OSI+PC9wYXRoPjxwYXRoIGQ9Ik02ODAuNiA1NDRIMzQzLjRjLTkuNCAwLTE3IDcuNi0xNyAxN3YxOC4yYzAgOS40IDcuNiAxNyAxNyAxN2gzMzcuMmM5LjQgMCAxNy03LjYgMTctMTdWNTYxYzAtOS40LTcuNi0xNy0xNy0xN3pNMTggMCIgZmlsbD0iI0YxN, NkM2OCwgNzMuNiwgODIgNTkuMiwgNjcuNCwgNDkuNCwgNjcuNCwgNDIuNiwgNjcuNCwgMjQ3LjIsIDU2LjQsIDI0Ny4yLCA0OS40LCAyNDcuMiwgNDAuMnYyM2MwIDExLjQgOS40IDIwLjggMjAuOCAyMC44aDEzMi4yYzExLjYgMCAyMC44LTkuNCAyMC44LTIwLjh2LTIzYy0wLjItMTEuNi05LjYtMjEtMjEtMjF6IiBmaWxsPSIjRTYxNzE3IiBwLWlkPSI2MzkwIj48L3BhdGg+PC9zdmc+'
   }
 ]
 
@@ -138,7 +146,16 @@ const orderInfo = reactive({
   paymentDeadline: ''
 })
 
-onMounted(() => {
+// 获取用户信息
+const getUserInfo = () => {
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    return JSON.parse(userStr)
+  }
+  return null
+}
+
+onMounted(async () => {
   // 生成订单号
   orderInfo.orderNo = 'CET' + new Date().getTime()
   
@@ -159,22 +176,53 @@ onMounted(() => {
   const deadline = new Date()
   deadline.setHours(deadline.getHours() + 2)
   orderInfo.paymentDeadline = `${deadline.getFullYear()}-${String(deadline.getMonth() + 1).padStart(2, '0')}-${String(deadline.getDate()).padStart(2, '0')} ${String(deadline.getHours()).padStart(2, '0')}:${String(deadline.getMinutes()).padStart(2, '0')}`
+
+  // 获取报名信息，确保状态同步
+  const userInfo = getUserInfo()
+  if (userInfo) {
+    try {
+      await registrationService.getRegistrationInfo(userInfo.id)
+      
+      // 检查是否已完成笔试缴费
+      if (registrationService.completedSteps.includes(REGISTRATION_STEPS.WRITTEN_PAY)) {
+        console.log('笔试缴费步骤已完成')
+        // 检查localStorage中的支付状态
+        const writtenPaymentStr = localStorage.getItem('written_payment')
+        if (writtenPaymentStr) {
+          const payment = JSON.parse(writtenPaymentStr)
+          if (payment.isPaid) {
+            // 显示支付成功状态
+            paymentStatus.value = {
+              success: true,
+              title: '支付成功',
+              message: '您已成功完成笔试缴费'
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('获取报名信息失败:', error)
+    }
+  }
 })
 
 const handlePay = async () => {
   if (!selectedMethod.value) {
+    ElMessage.warning('请选择支付方式')
     return
   }
   
   isLoading.value = true
   
-  try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/login')
-      return
-    }
+  const userInfo = getUserInfo()
+  if (!userInfo) {
+    ElMessage.error('用户信息不存在，请重新登录')
+    router.push('/login')
+    isLoading.value = false
+    return
+  }
 
+  try {
     // 模拟支付请求
     await new Promise(resolve => setTimeout(resolve, 2000))
     
@@ -185,7 +233,7 @@ const handlePay = async () => {
       message: '您已成功支付笔试报名费用，可以继续进行后续报名流程。'
     }
     
-    // 更新缴费状态
+    // 更新缴费状态到 localStorage (前端临时存储)
     const paymentData = {
       paid: true,
       orderNo: orderInfo.orderNo,
@@ -193,32 +241,28 @@ const handlePay = async () => {
       payMethod: selectedMethod.value,
       amount: orderInfo.totalPrice
     }
-    
     localStorage.setItem('writtenPayment', JSON.stringify(paymentData))
 
-    // 调用完成步骤接口
-    const response = await fetch('/api/student/registration/complete-step', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        step: 5,
-        data: paymentData
-      })
-    })
+    // 调用完成步骤接口，更新后端报名状态
+    await registrationService.completeStep(userInfo.id, REGISTRATION_STEPS.WRITTEN_PAY)
 
-    const data = await response.json()
-    if (data.code !== 200) {
-      console.error('完成步骤失败:', data.message)
+    ElMessage.success('支付成功并完成步骤')
+
+    // 自动跳转到下一步
+    const nextStep = registrationService.getNextStep()
+    if (nextStep) {
+      setTimeout(() => {
+        router.push(nextStep.path)
+      }, 500)
     }
+
   } catch (error) {
-    console.error('支付失败', error)
+    console.error('支付失败或完成步骤失败:', error)
+    ElMessage.error(error.message || '操作失败，请重试')
     paymentStatus.value = {
       success: false,
       title: '支付失败',
-      message: '支付过程中出现错误，请稍后重试。'
+      message: error.message || '支付过程中出现错误，请稍后重试。'
     }
   } finally {
     isLoading.value = false
@@ -229,11 +273,12 @@ const resetPayment = () => {
   paymentStatus.value = null
 }
 
+// 这个 handleNext 是支付结果后的"继续报名"按钮，逻辑不变
 const handleNext = () => {
   if (paymentStatus.value && paymentStatus.value.success) {
     router.push('/home/oral-exam')
   } else {
-    router.push('/home')
+    router.push('/home') // 支付失败时返回首页
   }
 }
 
@@ -407,6 +452,16 @@ const handleBack = () => {
   justify-content: center;
   gap: 20px;
   margin-top: 20px;
+}
+
+.btn-completed {
+  background-color: #67c23a;
+  color: white;
+  cursor: not-allowed;
+}
+
+.btn-completed:hover {
+  background-color: #67c23a;
 }
 
 /* 支付结果 */

@@ -40,8 +40,8 @@
               <span class="value">{{ userInfo.schoolInfo }}</span>
             </div>
             <div class="info-item">
-              <span class="label">专业：</span>
-              <span class="value">{{ userInfo.majorInfo }}</span>
+              <span class="label">资格状态：</span>
+              <span class="value">已通过资格验证</span>
             </div>
             <div class="info-item">
               <span class="label">学号：</span>
@@ -50,28 +50,14 @@
           </div>
           
           <div class="info-card">
-            <h4 class="info-card-title">补充信息</h4>
-            <div class="form-group">
-              <label class="form-label">手机号码</label>
-              <input 
-                type="text" 
-                class="form-input" 
-                placeholder="请输入手机号码" 
-                v-model="formData.phone" 
-                maxlength="11"
-              />
-              <div class="form-error" v-if="errors.phone">{{ errors.phone }}</div>
+            <h4 class="info-card-title">联系方式</h4>
+            <div class="info-item">
+              <span class="label">手机号码：</span>
+              <span class="value">{{ userInfo.phone || '未设置' }}</span>
             </div>
-            
-            <div class="form-group">
-              <label class="form-label">邮箱</label>
-              <input 
-                type="email" 
-                class="form-input" 
-                placeholder="请输入邮箱" 
-                v-model="formData.email"
-              />
-              <div class="form-error" v-if="errors.email">{{ errors.email }}</div>
+            <div class="info-item">
+              <span class="label">邮箱：</span>
+              <span class="value">{{ userInfo.email || '未设置' }}</span>
             </div>
           </div>
         </div>
@@ -83,9 +69,17 @@
           </label>
         </div>
         
-        <div class="action-buttons">
-          <button class="btn btn-default" @click="handleBack">返回</button>
-          <button class="btn btn-primary" @click="handleNext" :disabled="!isConfirmed || !isValid">确认并继续</button>
+        <div class="action-buttons" :style="{ justifyContent: 'center' }">
+          <button 
+            class="btn" 
+            :class="{ 'btn-primary': !isStepCompleted, 'btn-completed': isStepCompleted }"
+            @click="handleNext" 
+            :disabled="!isConfirmed || isStepCompleted || loading"
+          >
+            <span v-if="isStepCompleted">✓ 已完成</span>
+            <span v-else-if="loading">确认中...</span>
+            <span v-else>确认并继续</span>
+          </button>
         </div>
       </div>
     </div>
@@ -95,60 +89,26 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { registrationService, REGISTRATION_STEPS } from '../../services/registrationService.js'
 
 const router = useRouter()
 const isConfirmed = ref(false)
+const loading = ref(false)
 const userInfo = reactive({
   idType: '',
   idNumber: '',
   name: '',
   schoolInfo: '',
   majorInfo: '',
-  studentId: ''
-})
-
-const formData = reactive({
+  studentId: '',
   phone: '',
   email: ''
 })
 
-const errors = reactive({
-  phone: '',
-  email: ''
-})
-
-const validateForm = () => {
-  let isValid = true
-  
-  // 重置错误信息
-  errors.phone = ''
-  errors.email = ''
-  
-  // 验证手机号
-  if (!formData.phone) {
-    errors.phone = '请输入手机号码'
-    isValid = false
-  } else if (!/^1[3-9]\d{9}$/.test(formData.phone)) {
-    errors.phone = '请输入有效的手机号码'
-    isValid = false
-  }
-  
-  // 验证邮箱
-  if (!formData.email) {
-    errors.email = '请输入邮箱'
-    isValid = false
-  } else if (!/^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/.test(formData.email)) {
-    errors.email = '请输入有效的邮箱地址'
-    isValid = false
-  }
-  
-  return isValid
-}
-
-// 实时验证表单
-const isValid = computed(() => {
-  return formData.phone && /^1[3-9]\d{9}$/.test(formData.phone) &&
-         formData.email && /^[\w-]+(\.[\w-]+)*@[\w-]+(\.[\w-]+)+$/.test(formData.email)
+// 计算属性：当前步骤是否已完成
+const isStepCompleted = computed(() => {
+  return registrationService.completedSteps.includes(REGISTRATION_STEPS.QUAL_CONFIRM)
 })
 
 // 检查是否有资格信息
@@ -157,7 +117,21 @@ const hasQualificationInfo = computed(() => {
   return !!qualificationInfo
 })
 
-onMounted(() => {
+// 获取用户信息
+const getUserInfo = () => {
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    return JSON.parse(userStr)
+  }
+  return null
+}
+
+// 跳转到资格查询页面
+const goToQualification = () => {
+  router.push('/home/qualification')
+}
+
+onMounted(async () => {
   // 从localStorage获取之前查询的资格信息
   const qualificationInfo = localStorage.getItem('qualificationInfo')
   
@@ -169,60 +143,86 @@ onMounted(() => {
     userInfo.schoolInfo = info.schoolInfo
     userInfo.majorInfo = info.majorInfo
     userInfo.studentId = info.studentId
+  } else {
+    // 如果没有资格信息，重定向到资格查询页面
+    router.push('/home/qualification')
+    return
+  }
+  
+  // 获取报名信息
+  const currentUserInfo = getUserInfo()
+  if (!currentUserInfo) {
+    ElMessage.error('用户信息不存在，请重新登录')
+    router.push('/login')
+    return
+  }
+
+  // 从用户信息中获取手机号和邮箱
+  userInfo.phone = currentUserInfo.phone || ''
+  userInfo.email = currentUserInfo.email || ''
+
+  try {
+    // 获取最新报名信息以同步状态
+    await registrationService.getRegistrationInfo(currentUserInfo.id)
+
+    // 如果当前步骤已完成，自动勾选确认框
+    if (isStepCompleted.value) {
+      isConfirmed.value = true
+    }
+    
+  } catch (error) {
+    console.error('获取报名信息失败:', error)
+    ElMessage.error(error.message || '获取报名信息失败，请重试')
   }
 })
 
+// 处理下一步
 const handleNext = async () => {
-  if (!validateForm() || !isConfirmed.value) {
+  if (!isConfirmed.value) {
+    ElMessage.warning('请先勾选确认信息无误')
+    return
+  }
+
+  if (isStepCompleted.value) {
+    return
+  }
+
+  const currentUserInfo = getUserInfo()
+  if (!currentUserInfo) {
+    ElMessage.error('用户信息不存在，请重新登录')
+    router.push('/login')
     return
   }
   
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/login')
-      return
-    }
-
+    loading.value = true
+    
     // 存储确认后的完整信息
     const confirmInfo = {
       ...userInfo,
-      phone: formData.phone,
-      email: formData.email
+      phone: userInfo.phone,
+      email: userInfo.email
     }
     localStorage.setItem('confirmInfo', JSON.stringify(confirmInfo))
 
-    // 调用完成步骤接口
-    const response = await fetch('/api/student/registration/complete-step', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        step: 3,
-        data: confirmInfo
-      })
-    })
-
-    const data = await response.json()
-    if (data.code === 200) {
-      router.push('/home/written-exam')
-    } else {
-      alert(data.message || '操作失败')
+    // 调用报名服务完成步骤
+    await registrationService.completeStep(currentUserInfo.id, REGISTRATION_STEPS.QUAL_CONFIRM)
+    
+    ElMessage.success('信息确认成功')
+    
+    // 跳转到下一步
+    const nextStep = registrationService.getNextStep()
+    if (nextStep) {
+      setTimeout(() => {
+        router.push(nextStep.path)
+      }, 500)
     }
   } catch (error) {
     console.error('完成步骤失败:', error)
-    alert('操作失败，请重试')
+    ElMessage.error(error.message || '操作失败，请重试')
+  } finally {
+    loading.value = false
   }
-}
-
-const handleBack = () => {
-  router.push('/home/qualification')
-}
-
-const goToQualification = () => {
-  router.push('/home/qualification')
 }
 </script>
 
@@ -373,6 +373,16 @@ const goToQualification = () => {
   display: flex;
   justify-content: center;
   gap: 20px;
+}
+
+.btn-completed {
+  background-color: #67c23a;
+  color: white;
+  cursor: not-allowed;
+}
+
+.btn-completed:hover {
+  background-color: #67c23a;
 }
 
 @media (max-width: 768px) {

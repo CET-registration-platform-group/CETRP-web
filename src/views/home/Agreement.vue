@@ -1,14 +1,5 @@
 <template>
   <div class="agreement-container">
-    <StepNavigation 
-      current-step-key="AGREEMENT"
-      step-description="请仔细阅读报名协议，确认同意后继续下一步"
-      :can-proceed="isAgreed"
-      :loading="loading"
-      next-button-text="同意并继续"
-      @complete-step="handleCompleteStep"
-    />
-    
     <div class="agreement-content">
       <h3 class="agreement-title">全国大学英语四、六级考试(CET)报名协议</h3>
       
@@ -57,15 +48,28 @@
     
     <div class="agreement-actions">
       <label class="agreement-checkbox">
-        <input type="checkbox" v-model="isAgreed">
+        <input type="checkbox" v-model="isAgreed" :disabled="isStepCompleted">
         <span class="checkbox-text">我已阅读并同意《全国大学英语四、六级考试(CET)报名协议》</span>
       </label>
+      <button 
+        class="btn-next" 
+        @click="handleCompleteStep"
+        :disabled="!isAgreed || loading || isStepCompleted"
+        :class="{ 
+          'loading': loading,
+          'completed': isStepCompleted 
+        }"
+      >
+        <span v-if="loading" class="loading-spinner"></span>
+        <span v-else-if="isStepCompleted" class="completed-icon">✓</span>
+        {{ buttonText }}
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { registrationService, REGISTRATION_STEPS } from '../../services/registrationService.js'
@@ -73,6 +77,19 @@ import { registrationService, REGISTRATION_STEPS } from '../../services/registra
 const router = useRouter()
 const isAgreed = ref(false)
 const loading = ref(false)
+
+// 计算属性：当前步骤是否已完成
+const isStepCompleted = computed(() => {
+  return registrationService.completedSteps.includes(REGISTRATION_STEPS.AGREEMENT)
+})
+
+// 按钮文本
+const buttonText = computed(() => {
+  if (isStepCompleted.value) {
+    return '已完成'
+  }
+  return '同意并继续'
+})
 
 // 获取用户信息
 const getUserInfo = () => {
@@ -90,6 +107,10 @@ const handleCompleteStep = async () => {
     return
   }
 
+  if (isStepCompleted.value) {
+    return
+  }
+
   const userInfo = getUserInfo()
   if (!userInfo) {
     ElMessage.error('用户信息不存在，请重新登录')
@@ -100,8 +121,8 @@ const handleCompleteStep = async () => {
   try {
     loading.value = true
     
-    // 调用报名服务完成步骤
-    await registrationService.completeStep(userInfo.studentId, REGISTRATION_STEPS.AGREEMENT)
+    // 调用报名服务完成步骤，使用id作为studentId
+    await registrationService.completeStep(userInfo.id, REGISTRATION_STEPS.AGREEMENT)
     
     ElMessage.success('协议确认成功')
     
@@ -123,21 +144,30 @@ const handleCompleteStep = async () => {
 // 页面加载时检查当前步骤状态
 onMounted(async () => {
   const userInfo = getUserInfo()
+  console.log(userInfo)
+  
   if (!userInfo) {
+    console.error('用户信息不存在')
+    router.push('/login')
+    return
+  }
+
+  // 验证 id 是否有效
+  if (!userInfo.id || isNaN(userInfo.id)) {
+    console.log('用户ID:', userInfo.id)
+    console.error('用户 ID 无效')
+    ElMessage.error('用户ID无效，请重新登录')
     router.push('/login')
     return
   }
 
   try {
-    // 获取报名信息
-    await registrationService.getRegistrationInfo(userInfo.studentId)
+    // 获取报名信息，使用id作为studentId
+    await registrationService.getRegistrationInfo(userInfo.id)
     
-    // 如果当前步骤已完成，跳转到下一步
+    // 如果当前步骤已完成，自动勾选复选框
     if (registrationService.completedSteps.includes(REGISTRATION_STEPS.AGREEMENT)) {
-      const nextStep = registrationService.getNextStep()
-      if (nextStep) {
-        router.push(nextStep.path)
-      }
+      isAgreed.value = true
     }
   } catch (error) {
     console.error('获取报名信息失败:', error)
@@ -179,8 +209,9 @@ onMounted(async () => {
 .agreement-text h4 {
   font-size: 16px;
   font-weight: 600;
-  margin: 20px 0 10px;
   color: #303133;
+  margin-top: 20px;
+  margin-bottom: 10px;
 }
 
 .agreement-text p {
@@ -188,48 +219,108 @@ onMounted(async () => {
 }
 
 .agreement-conclusion {
+  font-weight: 600;
   margin-top: 20px;
-  font-weight: 500;
+  text-align: right;
 }
 
 .agreement-actions {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 20px;
+  margin-top: 20px;
 }
 
 .agreement-checkbox {
   display: flex;
-  align-items: flex-start;
-  gap: 10px;
+  align-items: center;
   cursor: pointer;
-  padding: 15px;
-  background-color: #f8f9fa;
-  border-radius: 6px;
-  border: 1px solid #e4e7ed;
+  font-size: 14px;
+  color: #606266;
 }
 
-.agreement-checkbox input {
-  margin-top: 4px;
+.agreement-checkbox input[type="checkbox"] {
+  margin-right: 8px;
   width: 18px;
   height: 18px;
   accent-color: #409EFF;
 }
 
-.checkbox-text {
-  font-size: 14px;
-  color: #303133;
-  line-height: 1.5;
+.agreement-checkbox .checkbox-text {
+  user-select: none;
 }
 
+.btn-next {
+  background-color: #409EFF;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 150px;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
+}
+
+.btn-next:hover {
+  background-color: #66b1ff;
+  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.3);
+}
+
+.btn-next:active {
+  background-color: #3a8ee6;
+  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.15);
+}
+
+.btn-next:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #a0cfff;
+  box-shadow: none;
+}
+
+.btn-next.completed {
+  background-color: #67c23a;
+  cursor: not-allowed;
+  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.2);
+}
+
+.btn-next.completed:hover {
+  background-color: #85ce61;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid #fff;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.completed-icon {
+  font-size: 20px;
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+/* 响应式调整 */
 @media (max-width: 768px) {
   .agreement-content {
-    max-height: 400px;
     padding: 15px;
-  }
-  
-  .agreement-checkbox {
-    padding: 12px;
   }
 }
 </style> 

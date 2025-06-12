@@ -19,71 +19,78 @@
             <span>{{ userInfo.studentId }}</span>
           </div>
           <div class="info-item">
-            <span class="label">学校：</span>
-            <span>{{ userInfo.schoolInfo }}</span>
+            <span class="label">证件类型：</span>
+            <span>{{ userInfo.idType }}</span>
           </div>
           <div class="info-item">
-            <span class="label">专业：</span>
-            <span>{{ userInfo.majorInfo }}</span>
+            <span class="label">证件号：</span>
+            <span>{{ userInfo.idNumber }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">手机号：</span>
+            <span>{{ userInfo.phone }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">邮箱：</span>
+            <span>{{ userInfo.email }}</span>
           </div>
         </div>
       </div>
 
-      <!-- 考试信息卡片 -->
+      <!-- 笔试考试信息卡片 -->
       <div class="status-card">
         <div class="card-header">
-          <h4>考试信息</h4>
+          <h4>笔试考试信息</h4>
         </div>
         <div class="card-content">
-          <div class="info-item">
+          <div v-if="writtenExamInfo.hasApplied" class="info-item">
             <span class="label">考试科目：</span>
-            <span>{{ examInfo.examNames }}</span>
+            <span>{{ writtenExamInfo.examNames }}</span>
           </div>
-          <div class="info-item">
+          <div v-if="writtenExamInfo.hasApplied" class="info-item">
             <span class="label">考试时间：</span>
-            <span>{{ examInfo.examTime }}</span>
+            <span>{{ writtenExamInfo.examTime }}</span>
           </div>
-          <div class="info-item">
+          <div v-if="writtenExamInfo.hasApplied" class="info-item">
             <span class="label">考试地点：</span>
-            <span>{{ examInfo.examLocation }}</span>
+            <span>{{ writtenExamInfo.examLocation }}</span>
           </div>
-          <div class="info-item">
-            <span class="label">付费状态：</span>
-            <span :class="['status', paymentInfo.isPaid ? 'success' : 'warning']">
-              {{ paymentInfo.isPaid ? '已付费' : '待付费' }}
-            </span>
+          <div v-if="!writtenExamInfo.hasApplied" class="info-item">
+            <span class="label">状态：</span>
+            <span class="status warning">该考试未报名</span>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 下一步提示 -->
-    <div class="next-steps">
-      <h4>下一步</h4>
-      <div class="step-items">
-        <div class="step-item" v-if="!paymentInfo.isPaid">
-          <el-icon><Warning /></el-icon>
-          <span>请尽快完成考试费用支付，以确保您的报名信息生效</span>
+      <!-- 口试考试信息卡片 -->
+      <div class="status-card">
+        <div class="card-header">
+          <h4>口试考试信息</h4>
         </div>
-        <div class="step-item" v-else>
-          <el-icon><Document /></el-icon>
-          <span>您可以打印准考证了</span>
+        <div class="card-content">
+          <div v-if="oralExamInfo.hasApplied" class="info-item">
+            <span class="label">考试科目：</span>
+            <span>{{ oralExamInfo.examNames }}</span>
+          </div>
+          <div v-if="oralExamInfo.hasApplied" class="info-item">
+            <span class="label">考试时间：</span>
+            <span>{{ oralExamInfo.examTime }}</span>
+          </div>
+          <div v-if="oralExamInfo.hasApplied" class="info-item">
+            <span class="label">考试地点：</span>
+            <span>{{ oralExamInfo.examLocation }}</span>
+          </div>
+          <div v-if="!oralExamInfo.hasApplied" class="info-item">
+            <span class="label">状态：</span>
+            <span class="status warning">该考试未报名</span>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- 操作按钮 -->
     <div class="action-buttons">
-      <button class="btn btn-default" @click="handleBack">返回首页</button>
       <button 
-        v-if="!paymentInfo.isPaid"
-        class="btn btn-primary" 
-        @click="handlePayment"
-      >
-        立即支付
-      </button>
-      <button 
-        v-else
         class="btn btn-primary" 
         @click="handlePrintTicket"
       >
@@ -97,27 +104,73 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Warning, Document } from '@element-plus/icons-vue'
+import { registrationService, REGISTRATION_STEPS } from '../../services/registrationService.js'
 
 const router = useRouter()
+const isLoading = ref(false)
 
 const userInfo = reactive({
   name: '',
   studentId: '',
-  schoolInfo: '',
-  majorInfo: ''
+  idType: '',
+  idNumber: '',
+  phone: '',
+  email: ''
 })
 
-const examInfo = reactive({
+const writtenExamInfo = reactive({
   examNames: '',
   examTime: '',
-  examLocation: ''
+  examLocation: '',
+  hasApplied: false
 })
 
-const paymentInfo = reactive({
-  isPaid: false,
-  amount: 0
+const oralExamInfo = reactive({
+  examNames: '',
+  examTime: '',
+  examLocation: '',
+  hasApplied: false
 })
+
+// 获取用户信息
+const getUserInfo = () => {
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    return JSON.parse(userStr)
+  }
+  return null
+}
+
+// 检查考试报名状态
+const checkExamStatus = () => {
+  // 检查笔试报名状态
+  const writtenExams = localStorage.getItem('writtenExams')
+  if (writtenExams) {
+    const exams = JSON.parse(writtenExams)
+    writtenExamInfo.hasApplied = true
+    writtenExamInfo.examNames = exams.examDetails.map(exam => exam.name).join('、')
+    writtenExamInfo.examTime = exams.examDetails[0].time
+    writtenExamInfo.examLocation = '郑州大学新校区第一教学楼'
+  }
+
+  // 检查口试报名状态
+  const oralExams = localStorage.getItem('oralExams')
+  if (oralExams) {
+    const exams = JSON.parse(oralExams)
+    // 检查是否跳过口试报名
+    if (exams.skipped) {
+      oralExamInfo.hasApplied = false
+      oralExamInfo.examNames = ''
+      oralExamInfo.examTime = ''
+      oralExamInfo.examLocation = ''
+    } else if (exams.examDetails && exams.examDetails.length > 0) {
+      oralExamInfo.hasApplied = true
+      oralExamInfo.examNames = exams.examDetails.map(exam => exam.name).join('、')
+      oralExamInfo.examTime = exams.examDetails[0].time
+      oralExamInfo.examLocation = '郑州大学新校区第一教学楼'
+    }
+  }
+}
 
 onMounted(async () => {
   // 获取用户信息
@@ -126,70 +179,50 @@ onMounted(async () => {
     const confirmInfo = JSON.parse(confirmInfoStr)
     userInfo.name = confirmInfo.name
     userInfo.studentId = confirmInfo.studentId
-    userInfo.schoolInfo = confirmInfo.schoolInfo
-    userInfo.majorInfo = confirmInfo.majorInfo
+    userInfo.idType = confirmInfo.idType || '身份证'
+    userInfo.idNumber = confirmInfo.idNumber
+    userInfo.phone = confirmInfo.phone
+    userInfo.email = confirmInfo.email
   }
 
-  // 获取考试信息
-  const writtenExamsStr = localStorage.getItem('writtenExams')
-  if (writtenExamsStr) {
-    const writtenExams = JSON.parse(writtenExamsStr)
-    examInfo.examNames = writtenExams.examDetails.map(exam => exam.name).join('、')
-    examInfo.examTime = writtenExams.examDetails[0].time
-    examInfo.examLocation = '郑州大学新校区第一教学楼'
+  // 检查考试报名状态
+  checkExamStatus()
+
+  // 获取最新报名信息以同步状态
+  const currentUserInfo = getUserInfo()
+  if (!currentUserInfo) {
+    ElMessage.error('用户信息不存在，请重新登录')
+    router.push('/login')
+    return
   }
 
-  // 获取支付状态
-  const paymentStatusStr = localStorage.getItem('payment_status')
-  if (paymentStatusStr) {
-    const paymentStatus = JSON.parse(paymentStatusStr)
-    paymentInfo.isPaid = paymentStatus.isPaid
-    paymentInfo.amount = paymentStatus.amount
-  }
-
-  // 完成报名流程
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/login')
-      return
+    isLoading.value = true
+    await registrationService.getRegistrationInfo(currentUserInfo.id)
+
+    // 只有在完成口试缴费后才自动完成报名步骤
+    const currentCompletedSteps = registrationService.completedSteps
+    if (currentCompletedSteps.includes(REGISTRATION_STEPS.ORAL_PAY) || currentCompletedSteps.includes(REGISTRATION_STEPS.WRITTEN_PAY)) {
+      // 避免重复调用，只在必要时调用completeStep
+      if (!currentCompletedSteps.includes(REGISTRATION_STEPS.COMPLETE)) {
+        await registrationService.completeStep(currentUserInfo.id, REGISTRATION_STEPS.COMPLETE)
+        ElMessage.success('已完成报名流程')
+      }
+    } else if (currentCompletedSteps.includes(REGISTRATION_STEPS.WRITTEN_APPLY) && !currentCompletedSteps.includes(REGISTRATION_STEPS.ORAL_APPLY)) {
+      // 如果跳过口试，并且已经完成笔试报考，直接完成报名
+      if (!currentCompletedSteps.includes(REGISTRATION_STEPS.COMPLETE)) {
+        await registrationService.completeStep(currentUserInfo.id, REGISTRATION_STEPS.COMPLETE)
+        ElMessage.success('已完成报名流程')
+      }
     }
 
-    const response = await fetch('/api/student/registration/complete-step', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        step: 8,
-        data: {
-          userInfo,
-          examInfo,
-          paymentInfo,
-          completed: true
-        }
-      })
-    })
-
-    const data = await response.json()
-    if (data.code !== 200) {
-      console.error('完成报名失败:', data.message)
-    }
   } catch (error) {
-    console.error('完成报名失败:', error)
+    console.error('获取报名信息或完成报名失败:', error)
+    ElMessage.error(error.message || '系统异常，请联系管理员')
+  } finally {
+    isLoading.value = false
   }
 })
-
-// 返回首页
-const handleBack = () => {
-  router.push('/home')
-}
-
-// 跳转到支付页面
-const handlePayment = () => {
-  router.push('/home/written-payment')
-}
 
 // 跳转到打印准考证页面
 const handlePrintTicket = () => {
@@ -215,8 +248,8 @@ const handlePrintTicket = () => {
 }
 
 .status-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 20px;
   margin-bottom: 30px;
 }
@@ -274,33 +307,6 @@ const handlePrintTicket = () => {
   color: var(--warning);
 }
 
-.next-steps {
-  background: white;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 30px;
-}
-
-.next-steps h4 {
-  margin: 0 0 15px 0;
-  font-size: 16px;
-  color: var(--text-primary);
-}
-
-.step-items {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.step-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--text-secondary);
-}
-
 .action-buttons {
   display: flex;
   justify-content: center;
@@ -308,10 +314,6 @@ const handlePrintTicket = () => {
 }
 
 @media (max-width: 768px) {
-  .status-cards {
-    grid-template-columns: 1fr;
-  }
-  
   .action-buttons {
     flex-direction: column;
     gap: 10px;

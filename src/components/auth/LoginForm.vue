@@ -76,6 +76,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { USER_API, request } from '../../config/api.js'
 
 const emit = defineEmits(['switch-to-register', 'switch-to-reset'])
 const router = useRouter()
@@ -88,6 +89,12 @@ onMounted(() => {
   setTimeout(() => {
     isSlideIn.value = false
   }, 50)
+  
+  // 尝试从localStorage加载上次成功登录的证件号码
+  const lastIdentityDocumentNumber = localStorage.getItem('lastIdentityDocumentNumber')
+  if (lastIdentityDocumentNumber) {
+    loginForm.identityDocumentNumber = lastIdentityDocumentNumber
+  }
 })
 
 const loginForm = reactive({
@@ -148,14 +155,9 @@ const handleLogin = async () => {
       })
       console.log('构建的URL参数:', params.toString())
       
-      const response = await fetch(`http://localhost:8080/api/student/login?${params}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      const data = await request(`${USER_API.LOGIN}?${params}`, {
+        method: 'POST'
       })
-
-      const data = await response.json()
 
       if (data.code === 200) {
         // 登录成功，保存用户信息和token
@@ -168,6 +170,9 @@ const handleLogin = async () => {
         localStorage.setItem('token', token)
         localStorage.setItem('user', JSON.stringify(user))
         
+        // 保存上次成功登录的证件号码
+        localStorage.setItem('lastIdentityDocumentNumber', loginForm.identityDocumentNumber)
+        
         ElMessage({
           message: data.message || '登录成功',
           type: 'success',
@@ -175,9 +180,52 @@ const handleLogin = async () => {
           showClose: true
         })
         
-        // 登录成功后跳转
-        setTimeout(() => {
-          router.push('/home')
+        // 登录成功后根据当前步骤跳转到相应界面
+        setTimeout(async () => {
+          try {
+            // 导入报名服务和步骤常量
+            const { registrationService, REGISTRATION_STEPS } = await import('../../services/registrationService.js')
+            
+            // 获取用户的报名信息
+            await registrationService.getRegistrationInfo(user.id)
+            
+            // 调试日志：检查 completedSteps 的类型和内容
+            console.log('LoginForm: completedSteps 类型:', typeof registrationService.completedSteps)
+            console.log('LoginForm: completedSteps 内容:', registrationService.completedSteps)
+            console.log('LoginForm: completedSteps 长度:', registrationService.completedSteps.length)
+            console.log('LoginForm: currentStep:', registrationService.currentStep)
+
+            let redirectToPath = '/home/agreement' // 默认跳转到协议页面
+            
+            // 如果当前步骤为完成报名，直接跳转到完成报名界面
+            if (registrationService.currentStep === REGISTRATION_STEPS.COMPLETE) {
+              redirectToPath = '/home/complete'
+              console.log('登录后当前步骤为完成报名，直接跳转到完成报名界面:', redirectToPath)
+            }
+            // 如果已完成步骤为空，强制跳转到报名协议页面
+            else if (registrationService.completedSteps.length === 0) {
+              console.log('登录后已完成步骤为空，强制跳转到报名协议页面:', redirectToPath)
+            } else {
+              // 否则，根据当前步骤或下一个步骤进行跳转
+              const nextStepConfig = registrationService.getNextStep()
+              if (nextStepConfig) {
+                redirectToPath = nextStepConfig.path
+                console.log('登录后跳转到下一个步骤:', redirectToPath)
+              } else {
+                // 如果没有下一个步骤（所有步骤已完成），跳转到完成页面
+                redirectToPath = '/home/complete'
+                console.log('登录后所有步骤已完成，跳转到完成页面:', redirectToPath)
+              }
+            }
+            
+            // 跳转到目标页面
+            router.push(redirectToPath)
+          } catch (error) {
+            console.error('获取报名信息失败，跳转到默认页面:', error)
+            
+            // 如果获取报名信息失败，说明是新用户，跳转到第一步
+            router.push('/home/agreement')
+          }
         }, 500)
       } else {
         ElMessage({
@@ -191,29 +239,16 @@ const handleLogin = async () => {
       console.error('登录失败:', error)
       let errorMessage = '登录失败，请稍后重试'
       
-      if (error.response) {
-        // 处理HTTP错误响应
-        switch (error.response.status) {
-          case 400:
-            errorMessage = '证件号码或密码错误'
-            break
-          case 401:
-            errorMessage = '未授权访问'
-            break
-          case 403:
-            errorMessage = '访问被禁止'
-            break
-          case 404:
-            errorMessage = '接口不存在'
-            break
-          case 500:
-            errorMessage = '服务器内部错误'
-            break
-          default:
-            errorMessage = error.response.data?.message || '登录失败'
-        }
-      } else if (error.message) {
-        errorMessage = error.message
+      if (error.message.includes('400')) {
+        errorMessage = '证件号码或密码错误'
+      } else if (error.message.includes('401')) {
+        errorMessage = '未授权访问'
+      } else if (error.message.includes('403')) {
+        errorMessage = '访问被禁止'
+      } else if (error.message.includes('404')) {
+        errorMessage = '接口不存在'
+      } else if (error.message.includes('500')) {
+        errorMessage = '服务器内部错误'
       }
       
       ElMessage({

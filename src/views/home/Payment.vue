@@ -89,7 +89,7 @@
       <button 
         class="btn btn-primary" 
         :disabled="!selectedMethod || isLoading"
-        @click="handlePay"
+        @click="handlePayment"
       >
         {{ isLoading ? '支付中...' : '立即支付' }}
       </button>
@@ -98,19 +98,35 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { registrationService, REGISTRATION_STEPS } from '../../services/registrationService.js'
 
 const router = useRouter()
 const route = useRoute()
-const paymentType = computed(() => route.query.type || 'written')
 
-const selectedMethod = ref('')
+// 获取用户信息
+const getUserInfo = () => {
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    return JSON.parse(userStr)
+  }
+  return null
+}
+
+// 支付类型：written 或 oral
+const paymentType = ref(route.query.type || 'written')
+
+// 支付状态
+const paymentStatus = ref('pending') // pending, processing, success, failed
 const isLoading = ref(false)
-const paymentStatus = ref('pending') // pending, success, failed
+const selectedMethod = ref('')
+
+// 订单信息
 const orderId = ref('')
 
+// 考试信息
 const examInfo = reactive({
   examNames: '',
   examTime: '',
@@ -150,43 +166,50 @@ const paymentDeadline = computed(() => {
 
 // 生成订单号
 const generateOrderId = () => {
-  const date = new Date()
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
-  return `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}${random}`
+  const timestamp = Date.now()
+  const random = Math.floor(Math.random() * 1000)
+  return `ORDER${timestamp}${random}`
 }
 
 const selectMethod = (methodId) => {
   selectedMethod.value = methodId
 }
 
+// 返回上一步
 const handleBack = () => {
-  router.push(paymentType.value === 'written' ? '/home/written-exam' : '/home/oral-exam')
+  if (paymentType.value === 'written') {
+    router.push('/home/written-exam')
+  } else {
+    router.push('/home/oral-exam')
+  }
 }
 
-const handlePay = async () => {
+// 处理支付
+const handlePayment = async () => {
   if (!selectedMethod.value) {
     ElMessage.warning('请选择支付方式')
     return
   }
 
-  isLoading.value = true
-  
+  const currentUserInfo = getUserInfo()
+  if (!currentUserInfo) {
+    ElMessage.error('用户信息不存在，请重新登录')
+    router.push('/login')
+    return
+  }
+
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/login')
-      return
-    }
+    isLoading.value = true
+    paymentStatus.value = 'processing'
 
     // 模拟支付过程
     await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    // 模拟成功
+
+    // 支付成功
     paymentStatus.value = 'success'
     
-    // 保存支付状态
+    // 保存支付信息到本地存储
     const paymentData = {
-      type: paymentType.value,
       isPaid: true,
       amount: examInfo.totalPrice,
       orderId: orderId.value,
@@ -194,30 +217,20 @@ const handlePay = async () => {
       paymentTime: new Date().toISOString()
     }
     
-    localStorage.setItem('payment_status', JSON.stringify(paymentData))
+    // 根据支付类型保存到不同的localStorage
+    const storageKey = paymentType.value === 'written' ? 'written_payment' : 'oral_payment'
+    localStorage.setItem(storageKey, JSON.stringify(paymentData))
     
-    // 调用完成步骤接口
-    const step = paymentType.value === 'written' ? 5 : 7
-    const response = await fetch('/api/student/registration/complete-step', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        step: step,
-        data: paymentData
-      })
-    })
+    // 使用统一的registrationService完成步骤
+    const stepToComplete = paymentType.value === 'written' ? REGISTRATION_STEPS.WRITTEN_PAY : REGISTRATION_STEPS.ORAL_PAY
+    
+    await registrationService.completeStep(currentUserInfo.id, stepToComplete)
+    ElMessage.success('支付成功！')
 
-    const data = await response.json()
-    if (data.code !== 200) {
-      console.error('完成步骤失败:', data.message)
-    }
-    
   } catch (error) {
     paymentStatus.value = 'failed'
-    ElMessage.error('支付失败，请重试')
+    console.error('支付失败:', error)
+    ElMessage.error(error.message || '支付失败，请重试')
   } finally {
     isLoading.value = false
   }

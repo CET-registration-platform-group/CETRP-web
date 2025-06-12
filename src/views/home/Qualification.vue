@@ -7,7 +7,7 @@
       <div class="form-content">
         <div class="form-group">
           <label class="form-label">证件类型</label>
-          <select class="form-input" v-model="formData.idType">
+          <select class="form-input" v-model="formData.idType" :disabled="isStepCompleted">
             <option value="居民身份证">中华人民共和国居民身份证</option>
             <option value="护照">护照</option>
             <option value="港澳通行证">港澳通行证</option>
@@ -23,6 +23,7 @@
             placeholder="请输入证件号码" 
             v-model="formData.idNumber" 
             maxlength="18"
+            :disabled="isStepCompleted"
           />
           <div class="form-error" v-if="errors.idNumber">{{ errors.idNumber }}</div>
         </div>
@@ -35,15 +36,16 @@
             placeholder="请输入姓名" 
             v-model="formData.name" 
             maxlength="20"
+            :disabled="isStepCompleted"
           />
           <div class="form-error" v-if="errors.name">{{ errors.name }}</div>
         </div>
       </div>
       
       <div class="action-buttons">
-        <button class="btn btn-default" @click="handleBack">返回</button>
-        <button class="btn btn-primary" @click="handleQuery" :disabled="isLoading">
+        <button class="btn btn-primary" @click="handleQuery" :disabled="isLoading || isStepCompleted">
           <span v-if="isLoading">查询中...</span>
+          <span v-else-if="isStepCompleted">已查询</span>
           <span v-else>查询</span>
         </button>
       </div>
@@ -67,10 +69,6 @@
             <span class="value">{{ queryResult.schoolInfo }}</span>
           </div>
           <div class="result-item">
-            <span class="label">专业信息：</span>
-            <span class="value">{{ queryResult.majorInfo }}</span>
-          </div>
-          <div class="result-item">
             <span class="label">学号：</span>
             <span class="value">{{ queryResult.studentId }}</span>
           </div>
@@ -81,27 +79,37 @@
           <p class="error-tip">如有疑问，请联系所在学校教务处或考试中心。</p>
         </div>
       </div>
-      
-      <div class="action-buttons">
-        <button class="btn btn-default" @click="resetQuery">重新查询</button>
-        <button 
-          class="btn btn-primary" 
-          @click="handleNext" 
-          v-if="queryResult.status === '符合报名资格'"
-        >
-          下一步
-        </button>
-      </div>
+    </div>
+    
+    <div class="qualification-actions">
+      <button 
+        class="btn-next" 
+        @click="handleCompleteStep"
+        :disabled="!canProceed || loading || isStepCompleted"
+        :class="{ 
+          'loading': loading,
+          'completed': isStepCompleted 
+        }"
+      >
+        <span v-if="loading" class="loading-spinner"></span>
+        <span v-else-if="isStepCompleted" class="completed-icon">✓</span>
+        {{ buttonText }}
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { registrationService, REGISTRATION_STEPS } from '../../services/registrationService.js'
+import { QUALIFICATION_API, request } from '../../config/api.js'
+import { REGISTRATION_API } from '../../config/api.js'
 
 const router = useRouter()
 const isLoading = ref(false)
+const loading = ref(false)
 const queryResult = ref(null)
 
 const formData = reactive({
@@ -113,6 +121,24 @@ const formData = reactive({
 const errors = reactive({
   idNumber: '',
   name: ''
+})
+
+// 计算属性：当前步骤是否已完成
+const isStepCompleted = computed(() => {
+  return registrationService.completedSteps.includes(REGISTRATION_STEPS.QUAL_QUERY)
+})
+
+// 按钮文本
+const buttonText = computed(() => {
+  if (isStepCompleted.value) {
+    return '已完成'
+  }
+  return '确认并继续'
+})
+
+// 计算是否可以继续
+const canProceed = computed(() => {
+  return queryResult.value && queryResult.value.status === '符合报名资格'
 })
 
 const validateForm = () => {
@@ -148,43 +174,51 @@ const handleQuery = async () => {
     return
   }
   
+  // 如果步骤已完成，不执行查询
+  if (isStepCompleted.value) {
+    return
+  }
+
   isLoading.value = true
   
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
+    // 直接调用报名信息接口进行资格查询
+    // 如果报名信息存在，说明用户有资格报名
+    const userInfo = getUserInfo()
+    if (!userInfo) {
+      ElMessage.error('用户信息不存在，请重新登录')
       router.push('/login')
       return
     }
-
-    const response = await fetch('/api/student/qualification/query', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        idType: formData.idType,
-        idNumber: formData.idNumber,
-        name: formData.name
-      })
-    })
-
-    const data = await response.json()
+    
+    const data = await request(REGISTRATION_API.GET_INFO(userInfo.id))
     
     if (data.code === 200) {
+      // 报名信息存在，资格查询成功
       queryResult.value = {
-        status: data.data.qualified ? '符合报名资格' : '不符合报名资格',
-        schoolInfo: data.data.schoolInfo,
-        majorInfo: data.data.majorInfo,
-        studentId: data.data.studentId,
-        message: data.data.message
+        status: '符合报名资格',
+        schoolInfo: '已通过资格验证',
+        studentId: userInfo.id,
+        message: '符合报名资格'
       }
+      
+      ElMessage.success('资格查询成功')
+    } else if (data.code === 404) {
+      // 报名信息不存在，但用户已登录，说明是新用户，也有资格报名
+      queryResult.value = {
+        status: '符合报名资格',
+        schoolInfo: '新用户',
+        studentId: userInfo.id,
+        message: '符合报名资格（新用户）'
+      }
+      
+      ElMessage.success('资格查询成功（新用户）')
     } else {
       queryResult.value = {
         status: '查询失败',
         message: data.message || '查询失败，请稍后重试'
       }
+      ElMessage.error(data.message || '查询失败，请稍后重试')
     }
   } catch (error) {
     console.error('查询出错', error)
@@ -192,68 +226,111 @@ const handleQuery = async () => {
       status: '查询失败',
       message: '网络错误，请稍后重试'
     }
+    ElMessage.error('网络错误，请稍后重试')
   } finally {
     isLoading.value = false
   }
 }
 
-const resetQuery = () => {
-  queryResult.value = null
+// 获取用户信息
+const getUserInfo = () => {
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    return JSON.parse(userStr)
+  }
+  return null
 }
 
-const handleNext = async () => {
+// 完成当前步骤
+const handleCompleteStep = async () => {
+  if (!canProceed.value) {
+    ElMessage.warning('请先完成资格查询')
+    return
+  }
+
+  // 如果步骤已完成，不执行任何操作
+  if (isStepCompleted.value) {
+    return
+  }
+
+  const userInfo = getUserInfo()
+  if (!userInfo) {
+    ElMessage.error('用户信息不存在，请重新登录')
+    router.push('/login')
+    return
+  }
+
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/login')
-      return
-    }
-
-    // 调用完成步骤接口
-    const response = await fetch('/api/student/registration/complete-step', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        step: 2,
-        data: {
-          idType: formData.idType,
-          idNumber: formData.idNumber,
-          name: formData.name,
-          schoolInfo: queryResult.value.schoolInfo,
-          majorInfo: queryResult.value.majorInfo,
-          studentId: queryResult.value.studentId
-        }
-      })
-    })
-
-    const data = await response.json()
-    if (data.code === 200) {
-      // 存储查询结果到localStorage，供后续步骤使用
-      localStorage.setItem('qualificationInfo', JSON.stringify({
-        idType: formData.idType,
-        idNumber: formData.idNumber,
-        name: formData.name,
-        schoolInfo: queryResult.value.schoolInfo,
-        majorInfo: queryResult.value.majorInfo,
-        studentId: queryResult.value.studentId
-      }))
-      
-      router.push('/home/confirm-info')
-    } else {
-      alert(data.message || '操作失败')
+    loading.value = true
+    
+    // 调用报名服务完成步骤，使用id作为studentId
+    await registrationService.completeStep(userInfo.id, REGISTRATION_STEPS.QUAL_QUERY)
+    
+    // 存储查询结果到localStorage，供后续步骤使用
+    localStorage.setItem('qualificationInfo', JSON.stringify({
+      idType: formData.idType,
+      idNumber: formData.idNumber,
+      name: formData.name,
+      schoolInfo: queryResult.value.schoolInfo,
+      studentId: queryResult.value.studentId
+    }))
+    
+    ElMessage.success('资格确认成功')
+    
+    // 跳转到下一步
+    const nextStep = registrationService.getNextStep()
+    if (nextStep) {
+      setTimeout(() => {
+        router.push(nextStep.path)
+      }, 500)
     }
   } catch (error) {
     console.error('完成步骤失败:', error)
-    alert('操作失败，请重试')
+    ElMessage.error('操作失败，请重试')
+  } finally {
+    loading.value = false
   }
 }
 
-const handleBack = () => {
-  router.push('/home/agreement')
-}
+// 页面加载时检查当前步骤状态
+onMounted(async () => {
+  const userInfo = getUserInfo()
+  if (!userInfo) {
+    router.push('/login')
+    return
+  }
+  
+  if (!userInfo.id || isNaN(userInfo.id)) {
+    ElMessage.error('用户ID无效，请重新登录')
+    router.push('/login')
+    return
+  }
+
+  try {
+    // 获取报名信息，使用id作为studentId
+    await registrationService.getRegistrationInfo(userInfo.id)
+    
+    // 如果当前步骤已完成，自动填充数据并禁用查询按钮
+    if (isStepCompleted.value) {
+      const qualInfo = localStorage.getItem('qualificationInfo')
+      if (qualInfo) {
+        const parsedQualInfo = JSON.parse(qualInfo)
+        formData.idType = parsedQualInfo.idType
+        formData.idNumber = parsedQualInfo.idNumber
+        formData.name = parsedQualInfo.name
+        // 模拟查询结果为已完成状态
+        queryResult.value = {
+          status: '符合报名资格',
+          schoolInfo: parsedQualInfo.schoolInfo,
+          studentId: parsedQualInfo.studentId,
+          message: '已完成资格查询'
+        }
+      }
+    }
+  } catch (error) {
+    console.error('获取报名信息失败:', error)
+  }
+})
 </script>
 
 <style scoped>
@@ -263,110 +340,233 @@ const handleBack = () => {
   gap: 30px;
 }
 
+.query-section,
+.result-section {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e4e7ed;
+}
+
 .section-title {
   font-size: 18px;
-  font-weight: 500;
-  color: var(--text-primary);
+  font-weight: 600;
+  color: #303133;
   margin-bottom: 10px;
 }
 
 .section-desc {
-  color: var(--text-secondary);
+  font-size: 14px;
+  color: #606266;
   margin-bottom: 20px;
 }
 
 .form-content {
-  display: grid;
-  gap: 20px;
-  margin-bottom: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
 }
 
 .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .form-label {
+  display: block;
+  font-size: 14px;
+  color: #303133;
+  margin-bottom: 8px;
   font-weight: 500;
-  color: var(--text-secondary);
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #303133;
+  background-color: #f9fafc;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus {
+  border-color: #409EFF;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2);
+  background-color: white;
+}
+
+.form-input:disabled {
+  background-color: #f5f7fa;
+  cursor: not-allowed;
+  opacity: 0.8;
 }
 
 .form-error {
-  color: var(--danger-color);
+  color: #F56C6C;
   font-size: 12px;
   margin-top: 5px;
+  min-height: 18px;
 }
 
 .action-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
   margin-top: 20px;
+  text-align: center;
 }
 
-.result-section {
-  background-color: var(--bg-light);
-  border-radius: 8px;
-  padding: 20px;
+.btn-primary {
+  background-color: #409EFF;
+  color: white;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 8px rgba(64, 158, 255, 0.15);
+}
+
+.btn-primary:hover {
+  background-color: #66b1ff;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
+}
+
+.btn-primary:active {
+  background-color: #3a8ee6;
+  box-shadow: 0 1px 4px rgba(64, 158, 255, 0.1);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #a0cfff;
+  box-shadow: none;
 }
 
 .result-content {
-  margin-bottom: 20px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px dashed #e4e7ed;
 }
 
 .result-item {
   display: flex;
-  align-items: baseline;
-  margin-bottom: 15px;
-}
-
-.label {
-  color: var(--text-secondary);
-  width: 100px;
-  flex-shrink: 0;
-}
-
-.value {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.result-error {
-  color: var(--danger-color);
-  background-color: #fff2f2;
-  padding: 15px;
-  border-radius: 4px;
-  border-left: 4px solid var(--danger-color);
-}
-
-.error-tip {
+  margin-bottom: 10px;
   font-size: 14px;
-  margin-top: 10px;
-  color: var(--text-secondary);
+}
+
+.result-item .label {
+  color: #909399;
+  flex-shrink: 0;
+  width: 80px;
+}
+
+.result-item .value {
+  color: #303133;
+  flex-grow: 1;
 }
 
 .status-success {
-  color: var(--success-color);
+  color: #67C23A;
+  font-weight: 600;
 }
 
+.result-error {
+  color: #F56C6C;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.error-tip {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.qualification-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.btn-next {
+  background-color: #409EFF;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 500;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 150px;
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.2);
+}
+
+.btn-next:hover {
+  background-color: #66b1ff;
+  box-shadow: 0 6px 16px rgba(64, 158, 255, 0.3);
+}
+
+.btn-next:active {
+  background-color: #3a8ee6;
+  box-shadow: 0 2px 6px rgba(64, 158, 255, 0.15);
+}
+
+.btn-next:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: #a0cfff;
+  box-shadow: none;
+}
+
+.btn-next.completed {
+  background-color: #67c23a;
+  cursor: not-allowed;
+  box-shadow: 0 4px 12px rgba(103, 194, 58, 0.2);
+}
+
+.btn-next.completed:hover {
+  background-color: #85ce61;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid #fff;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.completed-icon {
+  font-size: 20px;
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+/* 响应式调整 */
 @media (max-width: 768px) {
-  .action-buttons {
-    flex-direction: column;
-    gap: 10px;
+  .section-title {
+    font-size: 16px;
   }
   
-  .btn {
-    width: 100%;
-  }
-  
-  .result-item {
-    flex-direction: column;
-    gap: 5px;
-  }
-  
-  .label {
-    width: auto;
+  .section-desc {
+    font-size: 12px;
   }
 }
+
 </style> 

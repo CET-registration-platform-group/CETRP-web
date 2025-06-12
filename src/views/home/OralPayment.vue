@@ -1,450 +1,453 @@
 <template>
   <div class="payment-container">
-    <div class="card">
-      <div class="card-header">
-        <span>口试缴费</span>
+    <div class="payment-section">
+      <h3 class="section-title">口试缴费</h3>
+      <p class="section-desc">请选择支付方式完成口试报名费用支付</p>
+      
+      <div class="payment-info">
+        <div class="info-card">
+          <h4 class="card-title">订单信息</h4>
+          <div class="info-item">
+            <span class="label">订单号：</span>
+            <span class="value">{{ orderInfo.orderNo }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">考试名称：</span>
+            <span class="value">2025年上半年全国大学英语四、六级考试(口试)</span>
+          </div>
+          <div class="info-item">
+            <span class="label">报考科目：</span>
+            <span class="value">{{ orderInfo.examNames }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">报考费用：</span>
+            <span class="value price">¥ {{ orderInfo.totalPrice }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">支付期限：</span>
+            <span class="value">{{ orderInfo.paymentDeadline }}</span>
+          </div>
+        </div>
+        
+        <div class="payment-methods">
+          <h4 class="card-title">支付方式</h4>
+          <div class="methods-list">
+            <div 
+              v-for="method in paymentMethods" 
+              :key="method.id"
+              class="method-item"
+              :class="{ 'selected': selectedMethod === method.id }"
+              @click="selectedMethod = method.id"
+            >
+              <div class="method-radio">
+                <input 
+                  type="radio" 
+                  :id="method.id" 
+                  name="paymentMethod" 
+                  :checked="selectedMethod === method.id"
+                />
+                <label :for="method.id"></label>
+              </div>
+              <div class="method-logo">
+                <img :src="method.logo" :alt="method.name" />
+              </div>
+              <div class="method-name">{{ method.name }}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="total-amount">
+          <span class="amount-text">需支付：</span>
+          <span class="amount-value">¥ {{ orderInfo.totalPrice }}</span>
+        </div>
       </div>
-      <div class="payment-content">
-        <div class="alert alert-warning">
-          <i class="icon-warning"></i>
-          <span>请确认以下信息并完成缴费</span>
-        </div>
-        
-        <div class="info-section">
-          <h3>考试信息</h3>
-          <div class="descriptions">
-            <div class="descriptions-row">
-              <div class="descriptions-item">
-                <div class="descriptions-label">考试类型</div>
-                <div class="descriptions-content">{{ examInfo.examTypeName }}</div>
-              </div>
-              <div class="descriptions-item">
-                <div class="descriptions-label">考试时间</div>
-                <div class="descriptions-content">{{ examInfo.oralExamDate }}</div>
-              </div>
-            </div>
-            <div class="descriptions-row">
-              <div class="descriptions-item">
-                <div class="descriptions-label">考点</div>
-                <div class="descriptions-content">{{ examInfo.examLocationName }}</div>
-              </div>
-              <div class="descriptions-item">
-                <div class="descriptions-label">考场</div>
-                <div class="descriptions-content">{{ examInfo.examRoomName }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="info-section">
-          <h3>缴费信息</h3>
-          <div class="descriptions">
-            <div class="descriptions-row">
-              <div class="descriptions-item">
-                <div class="descriptions-label">缴费金额</div>
-                <div class="descriptions-content">{{ examInfo.fee }}元</div>
-              </div>
-              <div class="descriptions-item">
-                <div class="descriptions-label">缴费状态</div>
-                <div class="descriptions-content">{{ paymentStatus }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="payment-methods" v-if="!isPaid">
-          <h3>选择支付方式</h3>
-          <div class="radio-group">
-            <label class="radio-item">
-              <input type="radio" name="payment" value="alipay" v-model="paymentMethod">
-              <span>支付宝</span>
-            </label>
-            <label class="radio-item">
-              <input type="radio" name="payment" value="wechat" v-model="paymentMethod">
-              <span>微信支付</span>
-            </label>
-            <label class="radio-item">
-              <input type="radio" name="payment" value="bank" v-model="paymentMethod">
-              <span>银行卡支付</span>
-            </label>
-          </div>
-          
-          <div class="payment-qrcode" v-if="paymentMethod">
-            <div class="qrcode-container">
-              <img :src="getQRCodeUrl()" alt="支付二维码" class="qrcode-img">
-            </div>
-            <p class="payment-tip">请使用{{ getPaymentMethodName() }}扫描二维码完成支付</p>
-          </div>
-        </div>
-        
-        <div class="payment-success" v-if="isPaid">
-          <div class="result-success">
-            <div class="result-icon">
-              <i class="icon-success"></i>
-            </div>
-            <h3 class="result-title">缴费成功</h3>
-            <p class="result-subtitle">您已成功完成口试缴费，可继续进行后续报名流程</p>
-          </div>
-        </div>
-        
-        <div class="btn-group">
-          <button class="btn btn-default" @click="handleBack">返回</button>
-          <button class="btn btn-primary" @click="handlePay" v-if="!isPaid">确认支付</button>
-          <button class="btn btn-primary" @click="handleNext" v-if="isPaid">下一步</button>
-        </div>
+      
+      <div class="action-buttons">
+        <button 
+          class="btn" 
+          :class="{ 'btn-primary': !isPaymentCompleted, 'btn-completed': isPaymentCompleted }"
+          @click="handlePay" 
+          :disabled="isLoading || !selectedMethod || isPaymentCompleted"
+        >
+          <span v-if="isPaymentCompleted">✓ 已支付</span>
+          <span v-else-if="isLoading">支付中...</span>
+          <span v-else>确认支付</span>
+        </button>
+      </div>
+    </div>
+    
+    <!-- 支付结果 -->
+    <div class="payment-result" v-if="paymentStatus && !isPaymentCompleted">
+      <div class="result-icon" :class="paymentStatus.success ? 'success' : 'failed'">
+        <i class="icon"></i>
+      </div>
+      <h3 class="result-title">{{ paymentStatus.title }}</h3>
+      <p class="result-message">{{ paymentStatus.message }}</p>
+      
+      <div class="result-actions">
+        <button 
+          v-if="!paymentStatus.success" 
+          class="btn btn-primary" 
+          @click="resetPayment"
+        >
+          重新支付
+        </button>
+        <button 
+          class="btn btn-primary" 
+          @click="handleNext"
+        >
+          {{ paymentStatus.success ? '继续报名' : '暂不支付' }}
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { registrationService, REGISTRATION_STEPS } from '../../services/registrationService.js'
 
 const router = useRouter()
-const paymentMethod = ref('')
-const isPaid = ref(false)
+const isLoading = ref(false)
+const selectedMethod = ref('')
+const paymentStatus = ref(null)
 
-const examInfo = reactive({
-  examType: '',
-  examTypeName: '',
-  examDate: '',
-  oralExamDate: '',
-  examLocation: '',
-  examLocationName: '',
-  examRoom: '',
-  examRoomName: '',
-  fee: 15 // 口试费用固定为15元
+// 检查支付是否已完成
+const isPaymentCompleted = computed(() => {
+  return registrationService.completedSteps.includes(REGISTRATION_STEPS.ORAL_PAY)
 })
 
-const paymentStatus = computed(() => {
-  return isPaid.value ? '已缴费' : '未缴费'
+// 支付方式
+const paymentMethods = [
+  {
+    id: 'alipay',
+    name: '支付宝',
+    logo: 'data:image/svg+xml;base64,PHN2ZyB0PSIxNjI3NTM1OTAwMDYzIiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjQ4NzAiIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cGF0aCBkPSJNMjMwLjQgNzkxLjZjLTEyLjggMC0yNS42LTEyLjgtMjUuNi0yNS42VjI1NmMwLTEyLjggMTIuOC0yNS42IDI1LjYtMjUuNmg1NjMuMmMxMi44IDAgMjUuNiAxMi44IDI1LjYgMjUuNnY1MTJjMCAxMi44LTEyLjggMjUuNi0yNS42IDI1LjZIMjMwLjR6IiBmaWxsPSIjMUE4MUM0IiBwLWlkPSI0ODcxIj48L3BhdGg+PHBhdGggZD0iTTYxNC40IDU0NGMtNjQgMzItMTQwLjggNTcuNi0yMTcuNiA3Ni44LTEyLjggMy4yLTI1LjYgNi40LTM4LjQgOS42IDkuNiAzMiAyOC44IDY0IDU3LjYgODkuNkM0NzMuNiA3NTUuMiA1MzcuNiA3OTcuNiA2MjQgNzk3LjZjODYuNCAwIDE1My42LTQ0LjggMTkyLTExNS4yLTU3LjYtMjguOC0xMjEuNi02MC44LTIwMS42LTEzOC40eiIgZmlsbD0iI0ZGRkZGRiIgcC1pZD0iNDg3MiI+PC9wYXRoPjxwYXRoIGQ9Ik04MTYgNjA4YzAtMy4yLTMuMi02LjQtMy4yLTYuNCAzLjItMTYgNi40LTM1LjIgNi40LTU0LjQgMC00MS42LTkuNi04My4yLTI1LjYtMTIxLjZIMjMwLjRjLTEyLjggMC0yNS42IDEyLjgtMjUuNiAyNS42djUxMmMwIDEyLjggMTIuOCAyNS42IDI1LjYgMjUuNmg1NjMuMmMxMi44IDAgMjUuNi0xMi44IDI1LjYtMjUuNlY2MDhIMTYwLjZ2LTM1LjJINDgzLjJjLTEyLjggMy4yLTI1LjYgMy4yLTM4LjQgNi40LTM1LjIgNi40LTY3LjIgOS42LTk2IDEyLjgtMjguOCAzLjItNTcuNiA2LjQtODMuMiA5LjYgOS42IDI1LjYgMjUuNiA1NC40IDQ4IDczLjYgMzguNCAzOC40IDgzLjIgNTQuNCAx0NTMuNiA1NC40czExNS4yLTQxLjYgMTQ3LjItODkuNmMtNTcuNi0yOC44LTEwOC44LTU3LjYtMTk1LjItMTI4IDAgNi40LTMuMiAxMi44LTMuMiAxOS4yIDM1LjIgMTkuMiA2NCAzMiA5NiA0MS42IDYuNCAxLjYgOS42IDEuNiAxNiAzLjIgMCAwIDAtMy4yLTMuMi0zLjJ6TTQ4MCA1MTJoLTE3OS4ybDEyLjgzLjJoMTY2LjR2MTIuOHoiIGZpbGw9IiNGRkZGRkYiIHAtaWQ9IjQ4NzMiPjwvcGF0aD48L3N2Zz4='
+  },
+  {
+    id: 'wechat',
+    name: '微信支付',
+    logo: 'data:image/svg+xml;base64,PHN2ZyB0PSIxNTU1OTkxNjQzMTg5IiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjIzNDgiIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cGF0aCBkPSJNNjg4LjM2NTcxNSAzNDMuNDI0MTQ4Yy0xNi4zODc5ODEgMC0zMi43NDUxNzIgMTAuOTM0MTIyLTMyLjc0NTE3MiAyNy4zNDc4ODMgMCAxNi4zNTQyMTIgMTYuMzU3MjgyIDI3LjMxNDExNCAzMi43NDUxNzIgMjcuMzE0MTE0IDE2LjQyMjc3NSAwIDMzLjA3MTI5LTEwLjkyMDk4IDMzLjA3MTI5LTI3LjMxNDExNEMyMjEuNDM3MDA1IDM1NC4zNTgyNyAyMDQuNzg4NDg5IDM0My40MjQxNDggMTg4LjM2NTcxNSAzNDMuNDI0MTQ4ek01MBIB1MDkuOTcyODc4IDE2LjM4Nzk4MSA0ODguMDE3Mjk3IiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgzMjAuNzUwMTc5LCAxMzQuMzEwNDk1KSIgZmlsbD0iIzUwQjY3NCIgcC1pZD0iMjM0OSI+PC9wYXRoPjwvc3ZnPg=='
+  },
+  {
+    id: 'unionpay',
+    name: '银联支付',
+    logo: 'data:image/svg+xml;base64,PHN2ZyB0PSIxNjk4ODQ1NDQyNTkwIiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjYzODgiIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48cGF0aCBkPSJNODMxLjggNjUzLjRjMC0xMS42LTkuNC0yMC44LTIwLjgtMjAuOEgyMTNjLTExLjYgMC0yMC44IDkuNC0yMC44IDIwLjh2MzAuNmMwIDExLjYgOS40IDIwLjggMjAuOCAyMC44aDU5OGMxMS42IDAgMjAuOC05LjQgMjAuOC0yMC44di0zMC42ek0yMzMuOCA0OTUuOGg1NTYuNGMxMS42IDAgMjAuOC05LjQgMjAuOC0yMC44di0zMC42YzAtMTEuNi05LjQtMjAuOC0yMC44LTIwLjhIMjMzLjhjLTExLjYgMC0yMC44IDkuNC0yMC44IDIwLjh2MzAuNmMwIDExLjQgOS40IDIwLjggMjAuOCAyMC44eiBtNjEzLjYtMTg0LjZIMTcwLjZjLTMyLjggMC01OS40IDI2LjYtNTkuNCA1OS40djI4Mi44YzAgMzIuOCAyNi42IDU5LjQgNTkuNCA1OS40aDY3MC44YzMyLjggMCA1OS40LTI2LjYgNTkuNC01OS40VjM3MC42Yy0wLjItMzIuOC0yNi44LTU5LjQtNTkuNC01OS40eiIgZmlsbD0iIzFCM0I4OSIgcC1pZD0iNjM4OSI+PC9wYXRoPjxwYXRoIGQ9Ik02ODAuNiA1NDRIMzQzLjRjLTkuNCAwLTE3IDcuNi0xNyAxN3YxOC4yYzAgOS40IDcuNiAxNyAxNyAxN2gzMzcuMmM5LjQgMCAxNy03LjYgMTctMTdWNTYxYzAtOS40LTcuNi0xNy0xNy0xN3pNMTggMCIgZmlsbD0iI0YxN, NkM2OCwgNzMuNiwgODIgNTkuMiwgNjcuNCwgNDkuNCwgNjcuNCwgNDIuNiwgNjcuNCwgMjQ3LjIsIDU2LjQsIDI0Ny4yLCA0OS40LCAyNDcuMiwgNDAuMnYyM2MwIDExLjQgOS40IDIwLjggMjAuOCAyMC44aDEzMi4yYzExLjYgMCAyMC44LTkuNCAyMC44LTIwLjh2LTIzYy0wLjItMTEuNi05LjYtMjEtMjEtMjF6IiBmaWxsPSIjRTYxNzE3IiBwLWlkPSI2MzkwIj48L3BhdGg+PC9zdmc+'
+  }
+]
+
+// 订单信息
+const orderInfo = reactive({
+  orderNo: '',
+  examNames: '',
+  totalPrice: 0,
+  paymentDeadline: ''
 })
 
-onMounted(() => {
-  // 检查是否已完成口试报考
-  const oralExamStr = localStorage.getItem('oralExams')
-  if (!oralExamStr) {
-    alert('请先完成口试报考')
+// 获取用户信息
+const getUserInfo = () => {
+  const userStr = localStorage.getItem('user')
+  if (userStr) {
+    return JSON.parse(userStr)
+  }
+  return null
+}
+
+onMounted(async () => {
+  // 生成订单号
+  orderInfo.orderNo = 'CET' + new Date().getTime()
+  
+  // 从localStorage获取考试信息
+  const oralExams = localStorage.getItem('oralExams')
+  if (oralExams) {
+    const exams = JSON.parse(oralExams)
+    orderInfo.totalPrice = exams.totalPrice
+    
+    // 拼接考试名称
+    orderInfo.examNames = exams.examDetails.map(exam => exam.name).join('、')
+  } else {
+    // 如果没有考试信息，返回上一步
     router.push('/home/oral-exam')
-    return
   }
   
-  // 获取口试报考信息
-  const oralExam = JSON.parse(oralExamStr)
-  const examDetails = oralExam.examDetails[0] // 取第一个考试信息
-  
-  if (examDetails) {
-    examInfo.examType = examDetails.id
-    examInfo.examTypeName = examDetails.name
-    examInfo.oralExamDate = examDetails.time
-    examInfo.fee = examDetails.price
-    
-    // 设置默认考点和考场信息
-    examInfo.examLocationName = '郑州大学新校区第一教学楼'
-    examInfo.examRoomName = '口试考场A'
-    
-    // 检查是否已缴费
-    const paymentStr = localStorage.getItem('oralPayment')
-    if (paymentStr) {
-      const payment = JSON.parse(paymentStr)
-      isPaid.value = payment.paid
+  // 设置支付期限
+  const deadline = new Date()
+  deadline.setHours(deadline.getHours() + 2)
+  orderInfo.paymentDeadline = `${deadline.getFullYear()}-${String(deadline.getMonth() + 1).padStart(2, '0')}-${String(deadline.getDate()).padStart(2, '0')} ${String(deadline.getHours()).padStart(2, '0')}:${String(deadline.getMinutes()).padStart(2, '0')}`
+
+  // 获取报名信息，确保状态同步
+  const userInfo = getUserInfo()
+  if (userInfo) {
+    try {
+      await registrationService.getRegistrationInfo(userInfo.id)
+      
+      // 检查是否已完成口试缴费
+      if (registrationService.completedSteps.includes(REGISTRATION_STEPS.ORAL_PAY)) {
+        console.log('口试缴费步骤已完成')
+        // 检查localStorage中的支付状态
+        const oralPaymentStr = localStorage.getItem('oral_payment')
+        if (oralPaymentStr) {
+          const payment = JSON.parse(oralPaymentStr)
+          if (payment.paid) {
+            // 显示支付成功状态
+            paymentStatus.value = {
+              success: true,
+              title: '支付成功',
+              message: '您已成功完成口试缴费'
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('获取报名信息失败:', error)
     }
   }
 })
-
-const getPaymentMethodName = () => {
-  switch (paymentMethod.value) {
-    case 'alipay':
-      return '支付宝'
-    case 'wechat':
-      return '微信'
-    case 'bank':
-      return '银行卡'
-    default:
-      return ''
-  }
-}
-
-const getQRCodeUrl = () => {
-  // 模拟不同支付方式的二维码
-  switch (paymentMethod.value) {
-    case 'alipay':
-      return 'https://via.placeholder.com/200?text=支付宝支付'
-    case 'wechat':
-      return 'https://via.placeholder.com/200?text=微信支付'
-    case 'bank':
-      return 'https://via.placeholder.com/200?text=银行卡支付'
-    default:
-      return ''
-  }
-}
 
 const handlePay = async () => {
-  if (!paymentMethod.value) {
-    alert('请选择支付方式')
+  if (!selectedMethod.value) {
+    ElMessage.warning('请选择支付方式')
     return
   }
   
+  isLoading.value = true
+  
+  const userInfo = getUserInfo()
+  if (!userInfo) {
+    ElMessage.error('用户信息不存在，请重新登录')
+    router.push('/login')
+    isLoading.value = false
+    return
+  }
+
   try {
-    const token = localStorage.getItem('token')
-    if (!token) {
-      router.push('/login')
-      return
+    // 模拟支付请求
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    // 假设支付成功
+    paymentStatus.value = {
+      success: true,
+      title: '支付成功',
+      message: '您已成功支付口试报名费用，可以继续进行后续报名流程。'
+    }
+    
+    // 更新缴费状态到 localStorage (前端临时存储)
+    const paymentData = {
+      paid: true,
+      orderNo: orderInfo.orderNo,
+      payTime: new Date().toISOString(),
+      payMethod: selectedMethod.value,
+      amount: orderInfo.totalPrice
+    }
+    localStorage.setItem('oral_payment', JSON.stringify(paymentData))
+
+    // 调用完成步骤接口，更新后端报名状态
+    await registrationService.completeStep(userInfo.id, REGISTRATION_STEPS.ORAL_PAY)
+
+    ElMessage.success('支付成功并完成步骤')
+
+    // 自动跳转到下一步
+    const nextStep = registrationService.getNextStep()
+    if (nextStep) {
+      setTimeout(() => {
+        router.push(nextStep.path)
+      }, 500)
     }
 
-    if (confirm('确认支付' + examInfo.fee + '元?')) {
-      // 模拟支付过程
-      setTimeout(async () => {
-        isPaid.value = true
-        
-        // 保存支付信息
-        const paymentData = {
-          status: 'paid',
-          method: paymentMethod.value,
-          amount: examInfo.fee,
-          time: new Date().toISOString()
-        }
-        
-        localStorage.setItem('oral_payment', JSON.stringify(paymentData))
-        
-        // 调用完成步骤接口
-        try {
-          const response = await fetch('/api/student/registration/complete-step', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              step: 7,
-              data: paymentData
-            })
-          })
-
-          const data = await response.json()
-          if (data.code !== 200) {
-            console.error('完成步骤失败:', data.message)
-          }
-        } catch (error) {
-          console.error('完成步骤失败:', error)
-        }
-        
-        alert('支付成功')
-      }, 1000)
-    }
   } catch (error) {
-    console.error('支付失败:', error)
-    alert('支付失败，请重试')
+    console.error('支付失败或完成步骤失败:', error)
+    ElMessage.error(error.message || '操作失败，请重试')
+    paymentStatus.value = {
+      success: false,
+      title: '支付失败',
+      message: error.message || '支付过程中出现错误，请稍后重试。'
+    }
+  } finally {
+    isLoading.value = false
   }
 }
 
-const handleBack = () => {
-  router.push('/home/oral-exam')
+const resetPayment = () => {
+  paymentStatus.value = null
 }
 
+// 这个 handleNext 是支付结果后的"继续报名"按钮，逻辑不变
 const handleNext = () => {
-  router.push('/home/complete')
+  if (paymentStatus.value && paymentStatus.value.success) {
+    router.push('/home/complete')
+  } else {
+    router.push('/home') // 支付失败时返回首页
+  }
 }
 </script>
 
 <style scoped>
 .payment-container {
-  padding: 20px;
-}
-
-.card {
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.card-header {
-  padding-bottom: 15px;
-  margin-bottom: 15px;
-  border-bottom: 1px solid #ebeef5;
-  font-weight: bold;
-  font-size: 18px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.alert {
-  padding: 10px 15px;
-  border-radius: 4px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-}
-
-.alert-warning {
-  background-color: #fdf6ec;
-  color: #e6a23c;
-  border: 1px solid #faecd8;
-}
-
-.icon-warning {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  margin-right: 8px;
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23e6a23c"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>');
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-
-.info-section {
-  margin-top: 20px;
-  padding: 15px;
-  border: 1px solid #e6e6e6;
-  border-radius: 4px;
-  background-color: #f9f9f9;
-}
-
-.info-section h3 {
-  margin-bottom: 15px;
-  color: #409EFF;
-}
-
-.descriptions {
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.descriptions-row {
-  display: flex;
-  border-bottom: 1px solid #ebeef5;
-}
-
-.descriptions-row:last-child {
-  border-bottom: none;
-}
-
-.descriptions-item {
-  flex: 1;
-  display: flex;
-  padding: 0;
-  border-right: 1px solid #ebeef5;
-}
-
-.descriptions-item:last-child {
-  border-right: none;
-}
-
-.descriptions-label {
-  width: 30%;
-  padding: 12px;
-  background-color: #f5f7fa;
-  border-right: 1px solid #ebeef5;
-  font-weight: bold;
-  color: #606266;
-}
-
-.descriptions-content {
-  flex: 1;
-  padding: 12px;
-  color: #606266;
-}
-
-.payment-methods {
-  margin-top: 20px;
-  padding: 15px;
-  border: 1px solid #e6e6e6;
-  border-radius: 4px;
-  background-color: #f9f9f9;
-}
-
-.payment-methods h3 {
-  margin-bottom: 15px;
-  color: #409EFF;
-}
-
-.radio-group {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 15px;
-}
-
-.radio-item {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.radio-item input {
-  margin-right: 5px;
-}
-
-.payment-qrcode {
-  margin-top: 20px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: 30px;
 }
 
-.qrcode-container {
-  margin: 20px 0;
-  padding: 10px;
-  background-color: #fff;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-}
-
-.qrcode-img {
-  width: 200px;
-  height: 200px;
-  display: block;
-}
-
-.payment-tip {
-  font-size: 14px;
-  color: #606266;
-}
-
-.payment-success {
-  margin-top: 20px;
-}
-
-.result-success {
-  text-align: center;
-  padding: 30px 0;
-}
-
-.result-icon {
-  margin-bottom: 20px;
-}
-
-.icon-success {
-  display: inline-block;
-  width: 72px;
-  height: 72px;
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2367c23a"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>');
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-}
-
-.result-title {
-  font-size: 20px;
-  color: #67c23a;
+.section-title {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-primary);
   margin-bottom: 10px;
 }
 
-.result-subtitle {
-  font-size: 14px;
-  color: #606266;
+.section-desc {
+  color: var(--text-secondary);
+  margin-bottom: 20px;
 }
 
-.btn-group {
+.payment-info {
+  display: grid;
+  gap: 20px;
+}
+
+.info-card, .payment-methods {
+  background-color: var(--bg-light);
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.info-item {
+  display: flex;
+  margin-bottom: 12px;
+}
+
+.label {
+  color: var(--text-secondary);
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.value {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.value.price {
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.methods-list {
+  display: grid;
+  gap: 15px;
+}
+
+.method-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  border-radius: 8px;
+  background-color: white;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.method-item:hover {
+  border-color: var(--primary-color);
+}
+
+.method-item.selected {
+  border-color: var(--primary-color);
+  background-color: var(--primary-bg);
+}
+
+.method-radio {
+  position: relative;
+}
+
+.method-radio input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.method-radio label {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  background-color: white;
+  cursor: pointer;
+  position: relative;
+}
+
+.method-item.selected .method-radio label {
+  border-color: var(--primary-color);
+}
+
+.method-item.selected .method-radio label:after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background-color: var(--primary-color);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.method-logo {
+  width: 40px;
+  height: 40px;
+}
+
+.method-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.method-name {
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.total-amount {
+  margin-top: 20px;
+  text-align: right;
+  padding: 15px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.amount-text {
+  font-size: 16px;
+  color: var(--text-primary);
+  margin-right: 10px;
+}
+
+.amount-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.action-buttons {
   display: flex;
   justify-content: center;
   gap: 20px;
-  margin-top: 30px;
+  margin-top: 20px;
 }
 
 .btn {
@@ -478,24 +481,94 @@ const handleNext = () => {
   background-color: #ecf5ff;
 }
 
-/* 响应式设计 */
+.btn-completed {
+  background-color: #67c23a;
+  color: white;
+  border: none;
+}
+
+.btn-completed:hover {
+  background-color: #67c23a;
+}
+
+/* 支付结果 */
+.payment-result {
+  background-color: white;
+  border-radius: 8px;
+  padding: 40px 20px;
+  text-align: center;
+  box-shadow: var(--card-shadow);
+}
+
+.result-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.result-icon.success {
+  background-color: var(--success-bg);
+}
+
+.result-icon.failed {
+  background-color: var(--danger-bg);
+}
+
+.result-icon .icon {
+  width: 40px;
+  height: 40px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.result-icon.success .icon {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2334c759"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>');
+}
+
+.result-icon.failed .icon {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23ff3b30"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>');
+}
+
+.result-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.result-message {
+  color: var(--text-secondary);
+  margin-bottom: 30px;
+}
+
+.result-actions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
 @media (max-width: 768px) {
-  .descriptions-row {
+  .info-item {
     flex-direction: column;
+    gap: 5px;
   }
   
-  .descriptions-item {
-    border-right: none;
-    border-bottom: 1px solid #ebeef5;
+  .label {
+    width: auto;
   }
   
-  .descriptions-item:last-child {
-    border-bottom: none;
-  }
-  
-  .radio-group {
+  .action-buttons, .result-actions {
     flex-direction: column;
     gap: 10px;
+  }
+  
+  .btn {
+    width: 100%;
   }
 }
 </style>

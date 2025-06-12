@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Auth from '../views/Auth.vue'
 import Home from '../views/Home.vue'
+import { ElMessage } from 'element-plus'
 
 const routes = [
   {
@@ -26,7 +27,21 @@ const routes = [
     children: [
       {
         path: '',
-        redirect: '/home/agreement'
+        redirect: (to) => {
+          // 动态重定向到用户当前步骤
+          const user = localStorage.getItem('user')
+          if (user) {
+            try {
+              const userInfo = JSON.parse(user)
+              // 这里先重定向到agreement，实际的重定向逻辑在路由守卫中处理
+              return '/home/agreement'
+            } catch (error) {
+              console.error('解析用户信息失败:', error)
+              return '/home/agreement'
+            }
+          }
+          return '/home/agreement'
+        }
       },
       {
         path: 'agreement',
@@ -101,62 +116,76 @@ router.beforeEach(async (to, from, next) => {
     return
   }
   
-  // 如果是需要认证的页面，检查步骤权限
-  if (requiresAuth && to.meta.stepKey) {
+  // 如果是需要认证的页面
+  if (requiresAuth) {
     try {
       const userInfo = JSON.parse(user)
       
-      // 检查用户信息是否包含id
+      // 检查用户信息是否包含id（作为studentId使用）
       if (!userInfo.id) {
         console.error('用户信息中缺少id:', userInfo)
         next('/login')
         return
       }
       
+      // 导入报名服务
       const { registrationService } = await import('../services/registrationService.js')
       
       try {
-        // 获取报名信息，使用id作为studentId
+        // 获取报名信息，使用id作为studentId。这一步会更新 registrationService 的 currentStep 和 completedSteps。
         await registrationService.getRegistrationInfo(userInfo.id)
         
-        // 检查当前路由是否可访问
-        const isAccessible = registrationService.isStepAccessible(to.meta.stepKey)
-        
-        if (!isAccessible) {
-          // 如果不可访问，跳转到当前可访问的步骤
-          const currentStepConfig = registrationService.getCurrentStepConfig()
-          next(currentStepConfig.path)
+        // 调试日志：检查 registrationService 的状态
+        // console.log('路由守卫: registrationService.currentStep:', registrationService.currentStep)
+        // console.log('路由守卫: registrationService.completedSteps:', registrationService.completedSteps)
+        // console.log('路由守卫: 目标 path:', to.path)
+
+        // 使用 registrationService 的 checkPageAccessibility 统一处理页面访问逻辑
+        const accessResult = registrationService.checkPageAccessibility(to.path)
+
+        if (!accessResult.accessible) {
+          // console.log('路由守卫: 页面不可访问，将跳转到:', accessResult.redirectPath, '消息:', accessResult.message)
+          // 显示提示信息
+          ElMessage.warning(accessResult.message)
+          next(accessResult.redirectPath)
           return
         }
+
       } catch (error) {
-        // 如果报名信息不存在，说明是新用户，允许访问第一步
-        if (error.message === '报名信息不存在') {
-          console.log('新用户，允许访问第一步')
-          // 新用户可以访问第一步（报名协议）
-          if (to.meta.stepKey === 'AGREEMENT') {
+        // console.error('路由守卫: 获取报名信息失败或权限检查异常:', error)
+        
+        // 如果是404错误（报名信息不存在），并且尝试访问的不是协议页面，则重定向到协议页面。
+        // 如果是协议页面，则允许访问。
+        if (error.message.includes('404') || error.message.includes('报名信息不存在')) {
+          // console.log('路由守卫: 新用户或报名信息不存在，允许访问第一步')
+          // 如果尝试访问的是 /home 或 /home/agreement，则允许通过
+          if (to.path === '/home' || to.path === '/home/agreement') {
             next()
             return
           } else {
-            // 如果不是第一步，跳转到第一步
+            // 否则重定向到协议页面
+            // console.log('路由守卫: 尝试访问非协议页面，但报名信息不存在，重定向到协议页面')
+            ElMessage.error('报名信息不存在，请从第一步开始报名')
             next('/home/agreement')
             return
           }
         } else {
-          // 其他错误，跳转到登录页面
-          console.error('获取报名信息失败:', error)
-          next('/login')
+          // 其他错误，尝试重新获取用户信息或跳转到登录页面
+          // console.error('路由守卫: 获取报名信息失败，可能是网络问题:', error)
+          ElMessage.error('获取报名信息失败，请检查网络或重新登录')
+          next('/login') // 对于关键错误，重定向到登录页
           return
         }
       }
     } catch (error) {
-      console.error('路由权限检查失败:', error)
-      // 如果获取报名信息失败，跳转到登录页面而不是第一步，避免无限循环
+      console.error('路由权限检查失败 (用户信息解析或导入服务失败):', error)
+      ElMessage.error('身份验证失败，请重新登录')
       next('/login')
       return
     }
   }
-  
-  next()
+
+  next() // 允许访问，如果不需要认证或者通过了所有认证检查
 })
 
 export default router
