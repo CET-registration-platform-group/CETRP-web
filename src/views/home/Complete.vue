@@ -253,12 +253,12 @@ const getUserInfo = () => {
 // 检查考试报名状态
 const checkExamStatus = () => {
   // 检查笔试报名状态
-  const writtenExams = localStorage.getItem('writtenExams')
-  if (writtenExams) {
-    const exams = JSON.parse(writtenExams)
+  const writtenExam = localStorage.getItem('writtenExam')
+  if (writtenExam) {
+    const exam = JSON.parse(writtenExam)
     writtenExamInfo.hasApplied = true
-    writtenExamInfo.examNames = exams.examDetails.map(exam => exam.name).join('、')
-    writtenExamInfo.examTime = exams.examDetails[0].time
+    writtenExamInfo.examNames = exam.name
+    writtenExamInfo.examTime = exam.time
     writtenExamInfo.examLocation = '河南科技学院新东校区 A#101 25号座位'
   }
 
@@ -274,7 +274,7 @@ const checkExamStatus = () => {
       oralExamInfo.examLocation = ''
     } else if (exams.examDetails && exams.examDetails.length > 0) {
       oralExamInfo.hasApplied = true
-      oralExamInfo.examNames = exams.examDetails.map(exam => exam.name).join('、')
+      oralExamInfo.examNames = exams.examDetails[0].name
       oralExamInfo.examTime = exams.examDetails[0].time
       oralExamInfo.examLocation = '河南科技学院 0#508 13号座位'
     }

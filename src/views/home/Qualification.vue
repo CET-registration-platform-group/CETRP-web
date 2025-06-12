@@ -182,8 +182,7 @@ const handleQuery = async () => {
   isLoading.value = true
   
   try {
-    // 直接调用报名信息接口进行资格查询
-    // 如果报名信息存在，说明用户有资格报名
+    // 获取用户信息
     const userInfo = getUserInfo()
     if (!userInfo) {
       ElMessage.error('用户信息不存在，请重新登录')
@@ -191,6 +190,26 @@ const handleQuery = async () => {
       return
     }
     
+    // 验证证件号码和姓名与用户信息是否一致
+    if (formData.idNumber !== userInfo.identityDocumentNumber) {
+      queryResult.value = {
+        status: '查询失败',
+        message: '信息不一致，请检查后重新输入'
+      }
+      // ElMessage.error('证件号码与登录信息不一致')
+      return
+    }
+    
+    if (formData.name !== userInfo.name) {
+      queryResult.value = {
+        status: '查询失败',
+        message: '信息不一致，请检查后重新输入'
+      }
+      // ElMessage.error('姓名与登录信息不一致')
+      return
+    }
+    
+    // 信息验证通过后，调用报名信息接口进行资格查询
     const data = await request(REGISTRATION_API.GET_INFO(userInfo.id))
     
     if (data.code === 200) {
@@ -304,6 +323,14 @@ onMounted(async () => {
     ElMessage.error('用户ID无效，请重新登录')
     router.push('/login')
     return
+  }
+
+  // 自动填充用户信息
+  if (userInfo.identityDocumentNumber) {
+    formData.idNumber = userInfo.identityDocumentNumber
+  }
+  if (userInfo.name) {
+    formData.name = userInfo.name
   }
 
   try {

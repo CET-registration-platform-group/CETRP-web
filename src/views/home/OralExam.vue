@@ -25,9 +25,9 @@
         :key="exam.id" 
         class="exam-item"
         :class="{ 
-          'selected': selectedExams.includes(exam.id)
+          'selected': selectedExam === exam.id
         }"
-        @click="isStepCompleted ? null : toggleExam(exam)"
+        @click="isStepCompleted ? null : selectExam(exam)"
       >
         <div class="exam-info">
           <div class="exam-name">{{ exam.name }}</div>
@@ -40,20 +40,20 @@
           </div>
         </div>
         <div class="exam-select">
-          <el-checkbox 
-            v-model="selectedExams" 
+          <el-radio 
+            v-model="selectedExam" 
             :label="exam.id"
             :disabled="!exam.available || isStepCompleted"
-          ></el-checkbox>
+          ></el-radio>
         </div>
       </div>
     </div>
 
-    <div class="exam-summary" v-if="selectedExams.length > 0">
+    <div class="exam-summary" v-if="selectedExam">
       <div class="summary-content">
         <div class="summary-text">
-          已选择 {{ selectedExams.length }} 个科目
-          <span class="total-price">总计：￥{{ totalPrice }}</span>
+          已选择考试科目
+          <span class="total-price">费用：￥{{ totalPrice }}</span>
         </div>
       </div>
     </div>
@@ -72,7 +72,7 @@
         class="btn"
         :class="{ 'btn-primary': !isStepCompleted, 'btn-completed': isStepCompleted }"
         @click="handleNext"
-        :disabled="isStepCompleted || loading || selectedExams.length === 0"
+        :disabled="isStepCompleted || loading || !selectedExam"
       >
         <span v-if="isStepCompleted">✓ 已完成</span>
         <span v-else-if="loading">处理中...</span>
@@ -98,7 +98,7 @@ import { ElMessage } from 'element-plus'
 import { registrationService, REGISTRATION_STEPS } from '../../services/registrationService.js'
 
 const router = useRouter()
-const selectedExams = ref([])
+const selectedExam = ref(null)
 const showError = ref(false)
 const errorMessage = ref('')
 const loading = ref(false)
@@ -150,13 +150,11 @@ const examList = computed(() => [
 ])
 
 const totalPrice = computed(() => {
-  return selectedExams.value.reduce((total, id) => {
-    const exam = examList.value.find(e => e.id === id)
-    return total + (exam ? exam.price : 0)
-  }, 0)
+  const selectedExamObj = examList.value.find(e => e.id === selectedExam.value)
+  return selectedExamObj ? selectedExamObj.price : 0
 })
 
-const toggleExam = (exam) => {
+const selectExam = (exam) => {
   if (isStepCompleted.value) return; // 如果已完成，禁用选择
   if (!exam.available) {
     errorMessage.value = exam.requirementText
@@ -164,11 +162,7 @@ const toggleExam = (exam) => {
     return
   }
   
-  if (selectedExams.value.includes(exam.id)) {
-    selectedExams.value = selectedExams.value.filter(id => id !== exam.id)
-  } else {
-    selectedExams.value.push(exam.id)
-  }
+  selectedExam.value = exam.id
   showError.value = false
 }
 
@@ -186,7 +180,7 @@ const handleNext = async () => {
     return
   }
 
-  if (selectedExams.value.length === 0) {
+  if (!selectedExam.value) {
     errorMessage.value = '请选择一个考试科目'
     showError.value = true
     return
@@ -203,17 +197,14 @@ const handleNext = async () => {
     loading.value = true
 
     // 保存选择的口试考试信息
-    const selectedExamDetails = examList.value
-      .filter(exam => selectedExams.value.includes(exam.id))
-      .map(exam => ({
-        id: exam.id,
-        name: exam.name,
-        time: exam.time,
-        price: exam.price
-      }))
-
+    const selectedExamObj = examList.value.find(e => e.id === selectedExam.value)
     const examData = {
-      examDetails: selectedExamDetails,
+      examDetails: [{
+        id: selectedExamObj.id,
+        name: selectedExamObj.name,
+        time: selectedExamObj.time,
+        price: selectedExamObj.price
+      }],
       totalPrice: totalPrice.value
     }
 
@@ -285,7 +276,7 @@ onMounted(async () => {
   const savedExamsStr = localStorage.getItem('oralExams')
   if (savedExamsStr) {
     const savedExams = JSON.parse(savedExamsStr)
-    selectedExams.value = savedExams.examDetails.map(exam => exam.id)
+    selectedExam.value = savedExams.examDetails[0].id
   }
 
   // 获取报名信息
@@ -303,7 +294,7 @@ onMounted(async () => {
       // 确保已选择的考试科目显示
       if (savedExamsStr) {
         const savedExams = JSON.parse(savedExamsStr)
-        selectedExams.value = savedExams.examDetails.map(exam => exam.id)
+        selectedExam.value = savedExams.examDetails[0].id
       }
     }
   } catch (error) {
@@ -405,7 +396,7 @@ onMounted(async () => {
   margin-top: 5px;
 }
 
-.exam-select .el-checkbox {
+.exam-select .el-radio {
   transform: scale(1.2);
 }
 

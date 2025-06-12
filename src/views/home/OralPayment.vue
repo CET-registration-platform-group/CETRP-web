@@ -165,8 +165,12 @@ onMounted(async () => {
     const exams = JSON.parse(oralExams)
     orderInfo.totalPrice = exams.totalPrice
     
-    // 拼接考试名称
-    orderInfo.examNames = exams.examDetails.map(exam => exam.name).join('、')
+    // 获取考试名称（现在只有一个考试）
+    if (exams.examDetails && exams.examDetails.length > 0) {
+      orderInfo.examNames = exams.examDetails[0].name
+    } else {
+      orderInfo.examNames = '未选择考试科目'
+    }
   } else {
     // 如果没有考试信息，返回上一步
     router.push('/home/oral-exam')

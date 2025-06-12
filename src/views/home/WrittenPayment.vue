@@ -160,13 +160,11 @@ onMounted(async () => {
   orderInfo.orderNo = 'CET' + new Date().getTime()
   
   // 从localStorage获取考试信息
-  const writtenExams = localStorage.getItem('writtenExams')
-  if (writtenExams) {
-    const exams = JSON.parse(writtenExams)
-    orderInfo.totalPrice = exams.totalPrice
-    
-    // 拼接考试名称
-    orderInfo.examNames = exams.examDetails.map(exam => exam.name).join('、')
+  const writtenExam = localStorage.getItem('writtenExam')
+  if (writtenExam) {
+    const exam = JSON.parse(writtenExam)
+    orderInfo.totalPrice = exam.price
+    orderInfo.examNames = exam.name
   } else {
     // 如果没有考试信息，返回上一步
     router.push('/home/written-exam')
@@ -187,10 +185,10 @@ onMounted(async () => {
       if (registrationService.completedSteps.includes(REGISTRATION_STEPS.WRITTEN_PAY)) {
         console.log('笔试缴费步骤已完成')
         // 检查localStorage中的支付状态
-        const writtenPaymentStr = localStorage.getItem('written_payment')
+        const writtenPaymentStr = localStorage.getItem('writtenPayment')
         if (writtenPaymentStr) {
           const payment = JSON.parse(writtenPaymentStr)
-          if (payment.isPaid) {
+          if (payment.paid) {
             // 显示支付成功状态
             paymentStatus.value = {
               success: true,

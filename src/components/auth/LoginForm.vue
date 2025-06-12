@@ -229,7 +229,7 @@ const handleLogin = async () => {
         }, 500)
       } else {
         ElMessage({
-          message: data.message || '登录失败',
+          message: '证件号码或密码错误',
           type: 'error',
           duration: 3000,
           showClose: true
