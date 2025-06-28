@@ -209,7 +209,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { registrationService, REGISTRATION_STEPS } from '../../services/registrationService.js'
-import jsPDF from 'jspdf'
+import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import JSZip from 'jszip'
 
